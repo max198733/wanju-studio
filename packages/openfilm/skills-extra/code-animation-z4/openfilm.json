@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 118,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z4 山水",
+    "en": "Z4 山水"
+  },
+  "summary": {
+    "zh-CN": "壮丽山景，流水，古亭 / shan shui, mountains, pavilions",
+    "en": "壮丽山景，流水，古亭 / shan shui, mountains, pavilions"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

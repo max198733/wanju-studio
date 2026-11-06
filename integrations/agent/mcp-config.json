@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "wanju": {
+      "command": "node",
+      "args": [
+        "integrations/agent/server.mjs"
+      ]
+    }
+  }
+}

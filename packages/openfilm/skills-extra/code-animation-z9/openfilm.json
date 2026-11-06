@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 123,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z9 青花",
+    "en": "Z9 青花"
+  },
+  "summary": {
+    "zh-CN": "白底蓝花，瓷器纹样 / blue and white porcelain",
+    "en": "白底蓝花，瓷器纹样 / blue and white porcelain"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

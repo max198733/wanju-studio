@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>玩剧</title>
+<link rel="icon" type="image/svg+xml" href="/wanju.svg">
+<script>
+  /* the theme before the first paint, so the wrong one never flashes: dark unless the person chose another */
+  (function () {
+    var t = 'dark';
+    try { t = localStorage.getItem('openfilm.theme') || 'dark'; } catch (e) {}
+    if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+  })();
+</script>
+</head>
+<body>
+<div id="root"><p role="status" style="padding:24px;color:#aaa;font:14px system-ui,sans-serif">正在打开玩剧…</p></div>
+<!-- the chat's column beside Studio (the panel Studio leaves room for), and its layer for what floats. Both are
+     Studio's host panel (its keys leave them alone) and take focus: a click anywhere in the chat, not only in its
+     fields, keeps the keyboard in the chat (Space, Delete, ⌘A there never reach Studio). -->
+<div id="of-chat" class="of-chat" data-studio-host-panel tabindex="-1"></div>
+<div id="of-chat-layer" class="of-chat" data-studio-host-panel tabindex="-1"></div>
+<script type="module" src="./main.tsx"></script>
+</body>
+</html>

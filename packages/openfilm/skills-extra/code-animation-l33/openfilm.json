@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 174,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L33 瑞士动态排版",
+    "en": "L33 瑞士动态排版"
+  },
+  "summary": {
+    "zh-CN": "一张音乐会海报按瑞士设计的五条规则自己排版，第五条是只打破一条。",
+    "en": "一张音乐会海报按瑞士设计的五条规则自己排版，第五条是只打破一条。"
+  },
+  "details": {
+    "zh-CN": "适合：干净的文字排版\n分类：图形与排版\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：干净的文字排版\n分类：图形与排版\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

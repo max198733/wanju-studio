@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 171,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L30 木刻版画",
+    "en": "L30 木刻版画"
+  },
+  "summary": {
+    "zh-CN": "村子用一整个冬天铸一口钟，钟声第一次响起，雪停了。",
+    "en": "村子用一整个冬天铸一口钟，钟声第一次响起，雪停了。"
+  },
+  "details": {
+    "zh-CN": "适合：粗犷、有力量\n分类：印刷与版画\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：粗犷、有力量\n分类：印刷与版画\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

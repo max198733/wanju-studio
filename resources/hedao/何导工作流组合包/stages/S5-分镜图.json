@@ -1,0 +1,512 @@
+{
+  "skeleton_id": "S5",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "分镜图",
+  "stage_numbers": [
+    6
+  ],
+  "purpose": "写分镜图提示词、生成每镜分镜图。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout",
+        "gate_enforcement"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S5.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [
+      {
+        "name": "定妆照与子形态图",
+        "path": "02-角色/01-定妆照/",
+        "schema": "image_files"
+      },
+      {
+        "name": "场景与道具图",
+        "path": "03-场景/、04-参考素材/01-道具/",
+        "schema": "image_files"
+      },
+      {
+        "name": "生图提示词",
+        "path": "04-参考素材/03-资产提示词/",
+        "schema": "prompt_files"
+      },
+      {
+        "name": "声音圣经与基准音轨",
+        "path": "02-角色/03-音色圣经与基准音轨/",
+        "schema": "voice_bible",
+        "must_contain": [
+          "voice_id",
+          "声线文字设定",
+          "基准MP3"
+        ]
+      }
+    ],
+    "out": [
+      {
+        "name": "分镜图提示词",
+        "path": "07-分镜提示词/",
+        "schema": "prompt_files"
+      },
+      {
+        "name": "分镜静态图",
+        "path": "08-分镜静态图/",
+        "schema": "image_files"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_number": 6,
+      "stage_id": "stage_6_storyboard_image_prompt_and_image_generation",
+      "name": "分镜图提示词与分镜图生成",
+      "purpose": "结合分镜原文和stage5资产生成每镜分镜图提示词及图片。",
+      "required_inputs": [
+        "stage4分镜原文",
+        "stage5资产",
+        "项目风格配置",
+        "项目图像API配置"
+      ],
+      "process": [
+        "建立镜头到人物、道具、场景资产的依赖图。",
+        "按镜号读取该镜分镜卡原文，按image_prompt_skill三段式格式生成提示词：**①[风格前缀词]＝项目锁定风格库关键词组合原文，置于最前；②[分镜原文]＝该镜分镜卡字段逐字全文保留（镜号／持续时长／机位／景别／光影／场景与人物／画面内容／运镜方式），一律逐字复制、禁止改写转写概括，「音效」与「台词」字段不写入；③[多参数据]＝按「场景与人物」的asset_id顺序生成 @[asset_id]_角色资产图／@[asset_id]_场景资产图／@[asset_id]_道具资产图 并附已验证公网URL**。原五项固定格式（机位→场景人物→画面描述→参考图绑定→风格定义）已废除。",
+        "解析【参考图绑定】中的全部asset_id，建立有序image_bindings清单；执行集合一致性校验（场景人物asset_id集合A=参考图绑定asset_id集合B，数量、成员、顺序完全一致）及资产身份校验（每个URL按asset_id从公网索引精准提取并核对）。任一不通过即记录mismatch_asset_id并阻断。",
+        "生成分镜图时，参考图必须与提示词[多参数据]及分镜原文「场景与人物」的asset_id完全一致：每个人物和场景的对应资产**按 asset_id 取本地无损母版文件**，以 multipart 形式随 /v1/images/edits 提交，**字段名 `image` 逐张重复（一张一个）**；不得遗漏、误挂、换绑或仅凭角色名匹配；**禁止把参考图 URL 当 image 值传给 /v1/images/generations**（v1.24.18 实测该姿势会被服务端静默丢弃）。",
+        "【生图多参闸门·生成前必过】分镜图提示词写入07-分镜提示词后、发起任何图像生成之前，必须先执行 stage_6_image_binding_gate（见 image_binding_gate_policy）：对每镜校验 IMG-BIND-C1 数量一致、C2 顺序一致、C3 ID合规（@标记必须为 @<asset_id>_角色|场景|道具资产图，禁止用角色名/场景名替代）、C4 与 API 任务索引三处一致；任一镜 C1/C2/C3 出现 FAIL 即 blocking，禁止发起该镜图像生成，只修正该镜后重跑闸门。本闸门与闸门A（资产URL预检）同为『生成前』闸门，两者都通过才允许提交该镜生成任务。",
+        "【闸门A-资产URL预检】分镜图提示词写完并写入07-分镜提示词后、发起任何图像生成之前，立即对该镜全部绑定资产（人物+道具+场景，即image_bindings中的全量asset_id）执行公网URL预检闸门：逐个发起HTTP GET校验（要求HTTP 200、Content-Type为图片、体积>10KB，参考url_rules.required_validation）；任一资产URL过期或缺失，立即触发自动重抓（本地副本存在→重新托管上传取得新URL并更新公网素材URL索引；无本地副本→按refresh_rule用同一提示词与同一image_bindings重新出图取得新URL）；全部资产URL确认可访问后才允许发起本镜分镜图生成请求；重抓后仍无法取得可用URL的镜头，记录asset_input_missing并写入blocked_镜头清单.json，该镜阻断、其余镜头不受影响。",
+        "检查本镜全部参考图数量；若超过Xem8k5多参上限5张，立即启用overlimit_multi_reference_composition_policy，按asset_id顺序分批合成，不得静默丢弃角色参考图。",
+        "只对依赖已通过资产且image_bindings全部完成的镜头执行图像生成；@文本不是图片输入，不能单独满足资产依赖。",
+        "生成请求必须把image_bindings中的每张参考图**本地文件**以 multipart 提交到 /v1/images/edits，字段名 `image` 逐张重复；同时保留 @标记、asset_id 与本地图文件/公网URL 的映射记录。纯文生图（无参考图）才走 /v1/images/generations 的 JSON 请求。",
+        "失败资产所阻断的镜头写入依赖图和自检结果。",
+        "图像API返回state=succeeded后，按api_integration.image_api.image_return_policy执行返图：从data.images[].url取得分镜图公网CDN地址，**同一动作内（v1.21.30）**立即下载本地副本到08-分镜静态图并完成落地校验（存在且>10KB + 文件头签名正确 + 真实像素解析），校验通过后才把shot_id、task_id、本地路径、xem8k5_returned_url、url_status写入08-分镜公网URL/公网素材URL索引.json与13-工作流文档/API任务索引.json。禁止只登记URL而把分镜图下载留到stage6.5／stage7再取。",
+        "多参超限镜头完成第二阶段合成后，登记multi_reference_overlimit_composite=true、composition_stage=2、全量source_asset_ids和final_storyboard_url；第二阶段合成图作为唯一正式分镜图。",
+        "返图缺失（无返回URL）、URL校验不通过或只有本地PNG的分镜图，一律阻断该镜头进入stage7，并按refresh_rule用同一提示词与同一image_bindings重新出图，递增版本且保留旧版本。",
+        "成功镜头继续生成并写入07-分镜提示词和08-分镜静态图。",
+        "失败镜头修复后只重跑对应镜头。",
+        "【URL终检·已合并至stage6.5】原「闸门B-分镜图URL自检」与 stage6.5 的公网素材URL校验为同一动作，为提升效率已合并：本阶段完成全部分镜图生成与返图登记后不再单独执行一遍全量URL校验，直接交由 stage6.5 统一执行一次（对本集全部资产URL与分镜图URL逐个HTTP校验；过期或缺失自动重抓，重抓失败按refresh_rule重新出图递增版本保留旧版；全部通过后才允许进入stage6.6与stage7；任一镜头最终仍无可用URL则保持blocked并写入blocked_镜头清单.json）。本阶段仍保留资产URL预检闸门A（生成前执行）。",
+        "对生成的分镜图执行结果自检；结果自检与返图登记全部通过后，才允许将分镜图写入正式目录并将本阶段标记为passed。",
+        "本镜人物绑定以该镜分镜脚本『场景与人物』字段写明的出场人物为准：逐字读取字段中每个角色正式名及asset_id（角色正式名（asset_id）格式，如耶耶（CH01）），仅将字段中出现的asset_id逐一绑定对应角色资产图；字段人物数量与该镜画面内容实际出现人物一致；未写入『场景与人物』字段的人物（含场景人物清单中在场但未入画者）一律不进入该镜图片参考图；发现字段缺ID、人物数量与画面内容不一致或多写未入画人物时，阻断该镜并回stage4返修，不得在stage6自行补ID、补人、删人或猜测身份。",
+        "【v1.21.30 补充】分镜图『返图成功』同样是三件齐备：有效公网URL + 同一步内落盘到08-分镜静态图的本地副本 + 落地校验通过。生成完成后跑 gates/stage_6_image_binding_gate.py 与 gates/asset_download_atomicity_gate.py，确认不存在『已登记分镜图URL但磁盘无对应文件』的条目才允许标记 passed。",
+        "【v1.21.31 补充】本阶段参考绑定以该镜『场景与人物』字段为唯一来源：字段中出现的人物、场景、道具三类 asset_id 必须**全部**绑定为参考图（顺序：人物按出场顺序 → 场景（带面用面资产）→ 道具，道具 ≤2）；字段未出现的一律不绑。绑定完成后跑 gates/stage_6_image_binding_gate.py 确认三类集合与字段逐位一致，再发起生成。",
+        "【v1.24.7 托管后端统一为腾讯云COS】分镜图生成成功的同一步内，除『下载本地副本到08-分镜静态图 + 落地校验』外，还必须完成『本地副本上传腾讯云COS』（api_integration.cos_imgbed / api/cos_imgbed_api.json），上传后匿名 GET 复核通过，把 COS 永久直链写入分镜图URL索引的 xem8k5_returned_url 字段、url_source=cos、url_status=verified；不得登记 xem8k5 返图 CDN 地址为长期挂载地址，不得使用 uguu/0x0.st 等临时图床。　（v1.24.14 追加）上传的对象**不得是母版本体**：必须先以本地无损母版一次性转码为 WebP 再上传该 WebP 对象，索引同步登记 upload_format/upload_bytes/master_local_path/master_bytes/transcode_source/transcode_passes/quality_tier/native_resolution/downscaled_to；本地无损母版原样保留（唯一可重编码源）。口径与分档见 standards/asset_upload_format_policy.json。",
+        "【v1.24.14·分镜图上传统一为 WebP】分镜图本地无损母版落盘并通过落地校验后，上传腾讯云COS 之前必须先转码：以本地无损母版为唯一输入一次性编码为 WebP 再上传（transcode_passes=1、transcode_source=lossless_master）；分镜图属**普通参考档**，按 standards/asset_upload_format_policy.json 的 quality_tiers.standard_reference 降分辨率并记录 downscaled_to；本地无损母版原样保留。字段与 stage5 的 COS 上传格式契约完全一致（同一条标准件），禁止两处口径分叉。",
+        "【参考图真实消费校验（v1.24.18，P0）】每次有参考图的生成响应返回后，立即读取 `usage.input_tokens_details.image_tokens` 并写入 13-工作流文档/API任务索引.json 的 `image_tokens_consumed`：**任何绑定过参考图的镜头该值必须 > 0**；==0 或缺字段一律判「参考图被服务端静默丢弃」，该镜分镜图作废、不得登记 verified、不得进入 stage7，按 refresh_rule 以同一提示词与同一 image_bindings 重跑；**整批中出现任一镜为 0 时整批停跑**（说明端点或传参姿势用错，不是单镜运气问题），并跑 gates/stage_6_image_binding_gate.py 的 C7 复核。",
+        "【人物朝向继承（v1.24.19）】分镜图提示词的『画面内容』逐字继承 stage4 卡文——其中已写入的人物身体/面部朝向约束（不得正对镜头）直接生效；生成后做结果侧复核时，若成图出现人物正脸直视镜头、身体正对镜头的构图，即判该镜提示词未被遵循，按 refresh_rule 以同一提示词同一绑定重跑。",
+        "【v1.24.20·分镜图单发纪律】分镜图生成链路**废除一切自动重试**：提交前查生成台账去重；失败即停；**AI 觉得不好必须询问导演、禁止自行重跑**；二次生成必须先登记导演授权。批量（≥2 镜）开跑前先报备预计请求数给导演确认。唯一真源 standards/one_shot_generation_policy.json。",
+        "【改卡-提示词-提交闸（v1.24.34，P0）】凡修改分镜卡（含任何字段、任何镜）后需要出图或出视频：①改卡；②逐条断言『每一处目标改动确实存在于卡内』；③重建提示词；④断言『重建后的提示词确实包含该新文本』；⑤以上四步全部通过才允许向生成接口提交，任一步失败就地停止、不发任何请求。"
+      ],
+      "self_checks_count": 41
+    }
+  ],
+  "stage_policies": {
+    "stage_6_storyboard_image_prompt_and_image_generation": {
+      "skill_source": "embedded_skills.image_prompt_skill",
+      "asset_dependency_policy": {
+        "selected_option": "A",
+        "dependency_file": "06-分镜/01-分镜管线/镜头资产依赖图.json",
+        "rules": [
+          "主要角色、主要场景、核心道具或分镜明确要求的资产失败时，阻断所有依赖镜头。",
+          "不依赖失败资产的镜头继续生成。",
+          "非关键装饰性资产失败时，只阻断确实依赖该资产的镜头。",
+          "成功资产和成功分镜图全部保留，不做全量回滚。",
+          "阶段存在失败镜头时状态为needs_revision，机器自检记录partial_progress=true。"
+        ]
+      },
+      "failure_status": "needs_revision with partial_progress=true",
+      "character_reference_binding_policy": {
+        "scene_character_source": "【场景人物】逐字复用分镜原文对应项目（该镜分镜脚本『场景与人物』字段，只含画面实际出镜人物，格式：角色正式名（asset_id）），并保留其中完整asset_id标注；禁止改写、概括、简称、别名或重新编号。",
+        "binding_format": "【参考图绑定】按【场景人物】中的asset_id顺序绑定，统一使用@[asset_id]_角色资产图与@[asset_id]_场景资产图；禁止仅用角色名绑定或调换顺序。",
+        "set_check": "提取场景人物asset_id集合A与参考图绑定asset_id集合B；A与B必须完全重合，数量相等、无多余、无缺失、顺序一致。",
+        "identity_check": "每个绑定URL必须从公网素材URL索引按asset_id精准提取，并核对URL记录中的asset_id、character_name/scene_name与绑定对象一致；错配立即阻断。"
+      },
+      "overlimit_multi_reference_composition_policy": {
+        "trigger": "本镜需要绑定的角色、场景、道具和其他参考图数量超过Xem8k5单次多参上限5张时触发；不超限镜头仍按原流程一次生成。",
+        "batch_one": "按场景人物/asset_id出场顺序取前5张参考图生成第一阶段合成图；首批不得漏掉排序靠前的角色，创建任务、轮询state=succeeded、取得data.images[].url并下载本地副本，登记intermediate_composite=true及batch_index=1。",
+        "batch_two": "第一阶段合成图返图成功后，将该合成图作为第1张参考图，再按原asset_id顺序把剩余未进入首批的角色资产图依次加入，生成第二阶段最终合成图；最终图必须覆盖全量场景人物，登记final_storyboard_image=true。",
+        "marking": "使用本机制的镜头必须在分镜记录、08-分镜公网URL/公网素材URL索引.json和13-工作流文档/API任务索引.json中写入multi_reference_overlimit_composite=true、composition_stage=2、source_asset_ids全量、final_storyboard_url。",
+        "validation": "第二阶段返回图才是正式分镜图；必须核对全量asset_id、人物身份、场景结构和构图。任一剩余角色未进入第二阶段、URL无效或身份错配，阻断该镜头并返修。",
+        "no_drop": "禁止因超限直接删除后续角色、禁止只生成前5人作为最终分镜图、禁止绕过二次合成。"
+      },
+      "index_fields": [
+        "multi_reference_overlimit_composite",
+        "composition_stage",
+        "source_asset_ids",
+        "final_storyboard_url"
+      ],
+      "visible_character_reference_policy": {
+        "source": "该镜分镜脚本的visible_character_asset_ids（实际入画人物），不是场景人物清单的全体在场集合。",
+        "image_set": "分镜图实际人物参考图asset_id集合必须与visible_character_asset_ids完全一致；每个实际入画人物恰好一张对应角色资产图，不能少、不能多、不能用一张图代替两个人。",
+        "overlimit": "多参超限时按visible_character_asset_ids与场景/道具资产的完整绑定清单分批；每个visible_character_asset_id必须在首批或后续批次进入，最终合成图不得遗漏。",
+        "blocking": "分镜写明多人实际入画但image数组只绑定一个人物，或角色图无法按asset_id逐一对应时，记录mismatch_asset_id/expected_character/actual_asset并阻断。"
+      },
+      "image_binding_gate_policy": {
+        "purpose": "把生图多参契约里的机检断言落成可执行闸门，在发起 stage6 图像生成之前拦截多参错配、漏参、顺序漂移与 ID 不合规。",
+        "gate_id": "stage_6_image_binding_gate",
+        "reference_implementation": "组合包 gates/stage_6_image_binding_gate.py（项目内按 gate_enforcement.script_location 落到 11-工作流脚本/workflow_gates/stage_6_image_binding_gate.py；可直接用组合包版本覆盖更新）",
+        "invocation": "每镜分镜图提示词写入 07-分镜提示词 之后、发起任何图像生成之前执行；与闸门A（资产URL预检）同属『生成前』闸门，两者都必须通过才允许提交该镜生成任务。",
+        "checks": [
+          "IMG-BIND-C1 数量一致：@标记去重后数量=绑定对象数；人物/场景与【场景人物】字段集合与数量完全一致；无重复、无未知ID；场景恰好1个；道具≤2",
+          "IMG-BIND-C2 顺序一致：@标记顺序=角色（按【场景人物】出场顺序）→ 场景 → 道具，逐位比对",
+          "IMG-BIND-C3 ID 合规：每个@标记匹配 ^@((CH|PRP)\\d{2}|SC\\d{2}(_[FB])?)_(角色|场景|道具)资产图$，且 ID 类型与后缀类型一致；禁止用角色名/场景名/别名替代 asset_id",
+          "IMG-BIND-C4 三处一致：与 13-工作流文档/API任务索引.json 中该镜登记的 source_asset_ids / ref_image_fields 的顺序与数量比对（索引缺失或未登记 asset_ids 时本项记 WARNING，不阻断）"
+        ],
+        "rule_source": "embedded_skills.image_prompt_skill.multi_reference_binding_contract（唯一真源）",
+        "outputs": {
+          "machine": "12-质检/stage_6_image_binding_gate_闸门结果_v{version}.json",
+          "human": "12-质检/stage_6_image_binding_gate_闸门汇总_v{version}.md"
+        },
+        "blocking_rule": "任一镜出现 C1/C2/C3 FAIL 即 blocking：禁止发起该镜图像生成、禁止标记 passed；只修正该镜后重跑本闸门，不得带病提交、不得降级为纯文本生图。",
+        "severity": "C1/C2/C3=阻断项（P0）；C4=索引存在时阻断、索引缺失时 WARNING",
+        "self_test_note": "本闸门已用『合规1镜+违规3镜（场景名代替ID、漏绑、顺序错、索引不一致）』夹具实测：合规镜通过、四类违规全部被准确拦出。"
+      },
+      "url_preflight_and_recovery_policy": {
+        "purpose": "杜绝资产/分镜图URL失效导致xem8k5/H3静默忽略参考图、产出长相漂移的问题（v1.24.7：公网素材托管后端已统一为腾讯云COS，对象URL为无签名永久直链，』URL 会过期』不再成立，本策略从『防过期』转为『防异常』）。URL校验只做两处、各管一段、不重复：① stage6 生成前资产预检（gate_a，本阶段内执行）；② stage6.5 生成后全量URL终检（含全部资产与分镜图）。任何URL问题都在触发生成前或进入下游前被发现并修复，全可用才放行。",
+        "gate_a_asset_preflight": "触发点：每镜分镜图提示词写入07-分镜提示词之后、发起该镜图像生成之前。范围：该镜image_bindings全量asset_id（人物+道具+场景）。动作：逐个HTTP校验（200+图片Content-Type+体积>10KB）；校验失败或缺失→用本地副本重传腾讯云COS取得新URL并更新公网素材URL索引（无本地副本→refresh_rule同提示词同绑定重新出图）；全部通过才生成。",
+        "gate_b_storyboard_postcheck": "【已合并·不再单独执行】原『出图后分镜图URL自检闸门』与 stage6.5 的公网素材URL校验是同一动作（同一批URL、同一校验标准、同一修复动作），为消除重复校验已合并到 stage6.5 统一执行一次：stage6.5 读取 stage5/stage6 的本地图片与公网素材URL索引，对本集全部资产URL与分镜图URL逐个做 HTTP 可访问性校验（200、图片类型、体积>10KB），校验失败即用本地副本重传腾讯云COS并更新索引（失败则按 refresh_rule 重新出图并递增版本保留旧版），全部通过后才允许进入 stage6.6 与 stage7。本节的 gate_a（生成前资产预检）继续在 stage6 内独立执行，不受影响。",
+        "rehost_rule": "本地副本存在时以腾讯云COS重新托管（保真、快速）：把本地**无损母版一次性转码为 WebP** 后上传腾讯云COS（v1.24.14：禁止直接上传 PNG/JPG 母版、禁止对已压缩文件二次编码；转码字段与分档见 standards/asset_upload_format_policy.json）（api/cos_imgbed_api.json；凭据 ../config/cos_config.json）取得无签名永久直链，校验通过后回写 xem8k5_returned_url（或对应字段）、url_status=verified、url_source=cos_rehost、rehosted_at，并同步更新08-分镜公网URL/公网素材URL索引.json或分镜图URL索引。",
+        "regenerate_rule": "无本地副本或重新托管失败时，按refresh_rule用同一提示词与同一image_bindings重新出图，递增版本并保留旧版本；新图本地落盘后重新上传腾讯云COS，新URL校验通过后更新索引并解除该镜blocked。",
+        "blocking": "任一资产或分镜图URL经重传COS后仍不可用，该镜记录asset_input_missing/url_recheck_failed并写入blocked_镜头清单.json；其余镜头正常继续，不全局停批；blocked解除后自动补跑该镜。",
+        "server_side_fetch_blindness": "gateA本机预检（HTTP 200）只能证明本机可达，不能证明xem8k5服务端能拉取该URL；xem8k5对拉取失败的参考图不报错而是静默跳过，导致该角色无参考自由发挥（长相漂移）。因此URL终检（已合并至stage6.5）之外必须增加结果侧资产一致性自检：每张分镜图生成后，与所绑定角色资产图逐张比对五官/发型/服装/标志性特征，发现与资产形象不符（如古装替代现代制服）即判定该镜参考失效，按refresh_rule同提示词同绑定自动重跑，不得仅凭URL校验通过就认定参考生效。已知风险点：多参考（≥3张）时小体量异兽参考易被人形角色挤占，分镜图层出现该情况可接受（stage7成片由英文Subject描述锚定不受影响），但成片若出现同类漂移仍需重跑。",
+        "index_write_serialization": "公网素材URL索引.json等共享索引文件的写操作必须串行化：任何脚本对索引执行读-改-写（read-modify-write）时必须在单进程内完成，禁止多个脚本（如stage5资产脚本与并行跑批脚本）同时打开同一索引写回快照，防止后写覆盖先写导致URL回退到死链（stage5竞态事故教训）。跑批编排时，所有涉及索引写回的阶段必须与其他写索引任务错峰执行；写回前先读取最新内容合并，禁止用内存中的旧快照整体覆盖。",
+        "durable_hosting_rule": "【v1.24.7 统一托管后端】本项目公网素材托管后端唯一为腾讯云COS（api/cos_imgbed_api.json；凭据 ../config/cos_config.json）。COS 桶权限必须为「公有读私有写」且**不得配置生命周期规则**——满足这两条时对象 URL 为无签名永久直链，不会因 TTL 到期失效。**禁止再使用 uguu.se / 0x0.st 等临时图床**（历史『URL 总是过期』即源于此，其 TTL 仅 1-4 小时）；**也不得把 xem8k5 出图返回的 CDN 地址（oss*.cxkedu.shop，实测数分钟至 2 天即 404）登记为长期挂载地址**。同一批素材必须来自同一个 COS 桶与同一域名，禁止混用多个图床（历史事故：混用旧 CDN 导致生成后端对该域名整体不可达）。",
+        "primary_hosting_rule": "【v1.24.7 权威来源】资产图片公网URL一律以腾讯云COS直链为权威来源（url_source=cos 或 cos_rehost），由 stage5/stage6 出图后『本地副本 → 上传COS』取得，或由 stage6.5 统一托管取得；索引字段仍沿用 xem8k5_returned_url 承载该 COS 直链（字段名保留以兼容下游闸门与技能引用）。xem8k5 出图返回的 CDN 地址仅用于『同一动作内下载本地副本』，下载完成后即不再引用。因 COS 直链永久有效，**跑批前不再需要『续期流程』与『到期前用 xem8k5 图生图复刻迁移』**（url_source=xem8k5_replica_migration 已废止）；仅保留一次可访问性校验作为异常兜底。"
+      }
+    }
+  },
+  "self_checks": {
+    "count": 41,
+    "items": [
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#0",
+        "text": "每个已执行镜头有提示词、任务记录和图片",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#1",
+        "text": "资产与镜头一一对应",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#2",
+        "text": "提示词中的每个参考图@标记均已解析为实际图片URL，且该URL已写入图像API请求的image数组；不存在仅有@文本而无图片输入的任务",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#3",
+        "text": "@引用顺序、image数组顺序、asset_id和实际URL一一对应",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#4",
+        "text": "有参考图@时image数组不能为空；没有参考图@时才允许省略image字段",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#5",
+        "text": "分镜图生成前已执行资产URL预检闸门：该镜全部绑定资产（人物、道具、场景）URL均通过HTTP校验（200、图片类型、体积>10KB），无过期、无缺失；发生过期或缺失的资产已自动重抓（重新托管或重新出图）并更新公网素材URL索引，重抓后仍失败镜头已写入blocked_镜头清单.json且未发起生成",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#6",
+        "text": "请求中的每个image URL均来自对应资产版本，公网URL可访问且与资产依赖图一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#7",
+        "text": "每个已生成分镜图均已完成返图登记：本地副本、xem8k5_returned_url、url_status=verified三者齐备且公网URL可访问",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#8",
+        "text": "本集全部分镜图的公网URL校验已执行且全部通过（已合并：该全量URL终检统一由stage6.5执行一次，不再在stage6重复执行；校验标准为HTTP 200、图片类型、体积>10KB，失效分镜图已自动重抓并更新索引，全部通过后才允许进入stage6.6与stage7）",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#9",
+        "text": "分镜构图和动作被保留",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#10",
+        "text": "图片无明显变形、穿模、水印、文字和画风漂移",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#11",
+        "text": "局部失败和阻断关系已结构化记录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#12",
+        "text": "该镜分镜图提示词【场景人物】与分镜脚本「场景与人物」项目逐字一致；场景人物项目中出现的每一个人和每一个场景，其资产图均已作为参考图绑定写入并传入image数组，无遗漏、无误挂；不在场景人物项目中的人物或场景未误挂",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#13",
+        "text": "分镜图提示词三段式结构完整（image_prompt_skill『风格前缀词 + 分镜原文 + 多参数据』）：[风格前缀词]在最前且为项目锁定风格原文；[分镜原文]居中且与分镜卡逐字一致（机位／景别／光影／场景与人物／画面内容／运镜方式，无改写转写概括，画面内容为原文照搬）；[多参数据]在末尾且与「场景与人物」完全一致并附已验证公网URL；提示词内不出现「音效」「台词」字段；任何一项不满足即按 binding_self_check 阻断该镜生成",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#14",
+        "text": "资产提示词（stage5）使用资产提示词模板（风格前缀词+资产内容），未误用分镜图三段式模板；分镜图提示词未误用资产模板",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#15",
+        "text": "分镜原文段中的「场景与人物」与分镜卡逐字一致并包含完整asset_id标注；不得使用简称、别名或无ID角色名；「画面内容」为原文照搬，不得出现模型自行转写或增补的细节。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#16",
+        "text": "分镜脚本『场景与人物』字段列出的人物数量与该镜画面内容实际出现人物一致（画面出现几人就绑定几人）；stage6未自行补ID、补人、删人或猜测身份，未把未入画人物（含场景清单在场者）绑入image数组。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#17",
+        "text": "【参考图绑定】asset_id集合与【场景人物】asset_id集合完全重合，数量、成员、顺序一致，无遗漏、无多余、无错配。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#18",
+        "text": "每个参考图URL对应的asset_id与绑定asset_id一致，URL索引中的character_name/scene_name与绑定对象一致；不一致即记录mismatch_asset_id并阻断。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#19",
+        "text": "一人多着装角色的绑定版本已按character_asset_folder_lock_policy与该镜画面内容着装描述核对：版本经资产文件夹编号实地对应后选定，版本错配（如画面日常装绑战斗装版本）已阻断并重参",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#20",
+        "text": "参考图绑定顺序、image数组顺序与场景人物asset_id出场顺序完全一致。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#21",
+        "text": "多参超限时已按前5张→第一阶段返图+剩余角色图完成两阶段合成，无角色被静默丢弃；第二阶段图已标记为正式分镜图。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#22",
+        "text": "多参超限镜头已写入multi_reference_overlimit_composite=true、composition_stage=2、全量source_asset_ids和final_storyboard_url。",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#23",
+        "text": "分镜实际入画人物asset_id集合与图片image_bindings人物asset_id集合完全一致：数量相等、每人恰好一张、无遗漏、无多余、无一图代多人。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#24",
+        "text": "多参数量三重一致（image_prompt_skill.multi_reference_binding_contract.count_consistency_rule）：去重后@标记 asset_id 数量 = 绑定对象数 = 请求体 image 数组长度 = image_bindings 条数；任一不等即该镜阻断，禁止多绑、漏绑、重复绑（机检）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#25",
+        "text": "多参顺序三重一致（order_consistency_rule）：【参考图绑定】@标记书写顺序 = 请求体 image 数组顺序 = image_bindings 清单顺序，逐位比对完全一致；排序为『角色（按场景人物出场顺序）→ 场景（1个，带面标注时用对应面资产，禁止错面）→ 道具（≤2）』（机检）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#26",
+        "text": "生图多参闸门已执行且通过（stage_6_image_binding_gate）：本集每镜 IMG-BIND-C1 数量一致、C2 顺序一致、C3 ID合规（全部@标记为 @<asset_id>_角色|场景|道具资产图 且 ID 类型与后缀一致、无用角色名/场景名替代）均 PASS，C4 与 API 任务索引一致或按 WARNING 记录；闸门结果已落盘 12-质检/stage_6_image_binding_gate_闸门结果_v{version}.json；存在 C1/C2/C3 FAIL 的镜头已被阻断且未发起生成",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#27",
+        "text": "@标记 ID 合规（asset_id_rule.regex）：每个@标记 ID 均匹配 ^((CH|PRP)\\d{2}|SC\\d{2}(_[FB])?)$；不存在用角色名/场景名/别名替代 asset_id 的写法；道具绑定用 PRPxx 且单镜 ≤2 个（机检）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#28",
+        "text": "结果侧资产一致性复核已执行并记录（result_side_check_rule）：该镜分镜图与所绑角色资产逐张比对五官/发型/服装、与所绑场景资产比对空间结构与面方向，复核结论与不符项的重跑记录已写入质检结果；未出现仅凭 URL 校验通过即放行的情形",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#29",
+        "text": "多人场景中未入画人物没有进入该镜图片参考图；分镜写明两人入画时不得只传一张人物参考图。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#30",
+        "text": "正反打/过肩镜头的图片参考图绑定与『场景与人物』字段场景面标注一致：字段含场景面（场景正式名·面名（面ID））时按该面资产ID绑定场景资产图（@SCxx_F_场景资产图/@SCxx_B_场景资产图），并与stage4组级『说话人→面资产』绑定核对（拍说话人1的镜绑SCxx_F、拍说话人2的镜绑SCxx_B），错面或未按绑定即阻断该镜",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#31",
+        "text": "【链路面绑定齐套（v1.21.29，机检）】每镜场景参考图绑定的面ID必须同时满足四项：①该面ID在该场景 face_split 中存在；②与该镜『场景与人物』字段的面标注一致；③与该场景 group_binding 内该镜说话人的绑定面一致；④该面资产的本地副本与 verified 公网 URL 均已登记（两面资产齐套）。任一不满足即阻断该镜生成，禁止错面绑定、禁止悬空面ID、禁止用基础场景资产顶替面资产、禁止只绑一面却在两面镜组内复用。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#32",
+        "text": "【分镜图出图即下载·原子性（v1.21.30，机检，P0）】每镜分镜图在取得 data.images[].url 后的同一动作内必须完成本地落盘（08-分镜静态图）与落地校验，才算返图成功；分镜图URL索引与API任务索引中不得存在『已登记 xem8k5_returned_url 但磁盘无对应分镜图文件』的条目。禁止把分镜图 URL 留到 stage6.5／stage7 再取；『URL 已取而未落盘』的镜头按返图失败处理（阻断该镜、按 refresh_rule 同提示词同绑定重新出图递增版本）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#33",
+        "text": "【分镜图本地副本落地校验（v1.21.30，机检，P0）】每张分镜图必须通过落地校验：文件存在且大小>10KB、文件头签名与格式一致、真实像素解析正确；本地副本缺失或损坏即阻断该镜进入 stage6.6／stage7，禁止以『仅有公网URL而无本地副本』的状态推进（分镜图URL实测数分钟至2天即失效，无本地副本则无从自愈）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#34",
+        "text": "【道具参考图绑定（v1.21.31，机检，P0）】该镜『场景与人物』栏中出现的每一个道具ID（道具正式名（PRPxx）），其道具资产图必须作为参考图绑定写入并传入 image 数组（@PRPxx_道具资产图），不得遗漏；本栏未出现的道具不得绑定（禁止凭画面描述或剧本自行增挂过场道具）。单镜道具参考图 ≤2 个；『场景与人物』栏道具ID集合必须与【参考图绑定】中的道具@标记集合完全一致。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#35",
+        "text": "【三集合一致（人物＋场景＋道具，v1.21.31，机检，P0）】该镜『场景与人物』栏的 asset_id 集合（人物 CHxx ＋ 场景 SCxx（带面则面ID） ＋ 道具 PRPxx）必须与【参考图绑定】的 asset_id 集合、请求体 image 数组的 asset_id 集合、image_bindings 清单三处完全一致——数量、成员、顺序逐位相同。任一不等即阻断该镜生成；禁止只校验人物与场景而放过道具（历史缺口），禁止多绑、漏绑、错绑、重复绑。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#36",
+        "text": "【分镜图 COS 上传格式契约（v1.24.14，机检，P0）】分镜图上传腾讯云COS前必须由本地无损母版一次性转 WebP（upload_format=webp、transcode_passes=1、transcode_source=lossless_master），本地母版保留；分镜图属**普通参考档**，按 standards/asset_upload_format_policy.json 降分辨率并记录 downscaled_to；字段口径与 stage5 完全一致，禁止两处分叉。机检：DL-C8~C11（P0）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#37",
+        "text": "【参考图真实消费（v1.24.18，机检，P0）】凡绑定了参考图（image_bindings 非空）的镜头，其生成响应 `usage.input_tokens_details.image_tokens` 必须 > 0，且该值已写入 13-工作流文档/API任务索引.json 的 `image_tokens_consumed`；==0、缺字段、或仍以「参考图 URL 随 /v1/images/generations 传 image 数组」的旧姿势提交，一律判定参考图未被消费：该镜分镜图作废、阻断进入 stage7，按 refresh_rule 以同一提示词与同一 image_bindings 重跑；整批中任一镜为 0 时整批停跑排查端点。由 stage_6_image_binding_gate 的 C7 机检。（唯一生效姿势：/v1/images/edits 的 multipart，`image` 字段逐张重复一张一个。）",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#38",
+        "text": "【分镜图单发（v1.24.20，机检，P0）】每个镜头分镜图**只允许发起一次付费生成**：提交前必须查 `13-工作流文档/生成台账.json`，该 shot_id + image 已有任一条记录即禁止再提交；生成失败（含 502/隧道抖动/读超时/轮询超时/参考图未消费）一律不自动重发；AI 自检或闸门复核觉得风格/画质不满意时，**禁止自行重跑**，须把问题列清并询问导演，由导演逐镜授权后方可二次生成。机检：IMG-BIND-C8 + one_shot_generation_gate（OS-C3/C4）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#39",
+        "text": "【分镜图参考强制（v1.24.28，机检，P0）】本阶段任何一次视频生成（含首次生成、失败重发、抽卡、全路重做、单镜返工）在提交前，该镜视频提示词的 ref_image 清单中**必须含有本镜自己的分镜图**（形如 `@S0x_xx_分镜图`，URL 与 stage6.5 索引同源）；**只要有一镜缺分镜图，整批一律不得提交**（不是逐镜跳过、不是先发后补）。提交前必须跑 `gates/h3_video_ref_binding_gate.py` 且 REFBIND-C1（每镜必含分镜图）与 REFBIND-C8（生成器入口护栏）均为 PASS；闸门非 PASS 时**禁止发起任何一条视频请求**，并须把闸门结果文件留档。生成器（stage7 生成脚本）本身必须内置同一判据并在入口处硬拒绝——闸门与生成器两处独立成立，缺一不得提交。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_storyboard_image_prompt_and_image_generation#40",
+        "text": "【改卡同步提交闸（v1.24.34，机检，P0）】修改分镜卡后提交生成前：卡内每一处目标改动均可检索到，且重建后的提示词文件包含同样的新文本；任一不满足即禁止提交。执行闸门：stage5/7 提交前自检。",
+        "p0": true,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [
+      "stage_6_storyboard_image_prompt_and_image_generation#32",
+      "stage_6_storyboard_image_prompt_and_image_generation#33",
+      "stage_6_storyboard_image_prompt_and_image_generation#34",
+      "stage_6_storyboard_image_prompt_and_image_generation#35",
+      "stage_6_storyboard_image_prompt_and_image_generation#36",
+      "stage_6_storyboard_image_prompt_and_image_generation#37",
+      "stage_6_storyboard_image_prompt_and_image_generation#38",
+      "stage_6_storyboard_image_prompt_and_image_generation#39",
+      "stage_6_storyboard_image_prompt_and_image_generation#40"
+    ],
+    "full_film_ids": [
+      "stage_6_storyboard_image_prompt_and_image_generation#8",
+      "stage_6_storyboard_image_prompt_and_image_generation#22"
+    ],
+    "p0_count": 9,
+    "full_film_count": 2,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [
+    "gates/stage_6_image_binding_gate.py（发起图像生成前）",
+    "gates/pipeline_scene_face_consistency_gate.py"
+  ],
+  "gates_mentioned": {
+    "list": [
+      "asset_download_atomicity_gate.py",
+      "h3_video_ref_binding_gate.py"
+    ],
+    "rule": "这些闸门在本环节规则正文或策略块里被提到，但不在 stage_gate_map 的必跑清单内。是否执行以对应规则原文为准，不要因为出现在这里就无条件跑。"
+  },
+  "gate_refs": {
+    "pipeline_face_gate_ref": "整体链路闸门：组合包内 gates/pipeline_scene_face_consistency_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/pipeline_scene_face_consistency_gate_闸门结果_v{version}.json 与 _闸门汇总_v{version}.md。该闸门跨 stage4→stage5→stage6→stage7 逐环校验场景正/反面（拍摄面）链路：stage4 的 face_split 面映射（schema 合规、两句面ID同源、组级说话人→面绑定）→ stage5 两面资产实物（本地副本 + verified 公网URL + 命名合规 + 齐套）→ stage6 每镜面绑定（标注＝绑定＝该镜说话人绑定面）→ stage7 每镜面引用（正打引 SCxx_F、反打引 SCxx_B，组内不重复引同一面）。任一环断裂即 P0 阻断。执行时机：stage5 资产生成完成后执行一次、stage6 发起图像生成前执行一次、stage7 发起视频生成前再执行一次。本闸门不替代各阶段专项闸门（stage4/stage5/stage6 闸门仍须各自执行）；两者结论冲突时以更严者为准，禁止用本闸门结论豁免阶段闸门的 FAIL。",
+    "asset_reference_chain_ref": "场景／道具资产与单源参考链：① stage4 场景人物清单中登记的每个场景都必须生成场景资产（含 face_split 面资产），每个贯穿全剧道具（PRPxx）都必须生成道具资产（纯白背景）——只出现一两次的过场道具不生成、不参考；② 全片参考绑定遵循单源单向链『画面内容 → 『场景与人物』栏（人物CHxx／场景SCxx含面ID／道具PRPxx）→ stage5 资产 → stage6 分镜图参考 → stage7 视频 ref_image』，链路单向、不可跳级、不可反向覆盖；③ 校验落点：stage4 闸门（字段须含道具ID、链路声明）、stage5 闸门（场景与道具资产生成齐备）、stage6 闸门（人物＋场景＋道具三集合与字段逐位一致）、pipeline_scene_face_consistency_gate（链路跨阶段一致）。任一环断裂即 P0 阻断。"
+  },
+  "skills_hint": [
+    "skills/image_prompt_skill.md"
+  ],
+  "api_hint": [
+    "api/image_api.json"
+  ],
+  "size_bytes": 50001
+}

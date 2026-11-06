@@ -1,0 +1,184 @@
+{
+  "skeleton_id": "S2",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "剧本",
+  "stage_numbers": [
+    3
+  ],
+  "purpose": "用户上传剧本，或按剧本技能生成剧本。只出剧本，不算时长、不拆镜。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "note": "目录与命名规则（原 stage2）已在 S1 定死；本环节只按既有目录写 01-剧本，不得自建目录或改名。",
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S2.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [
+      {
+        "name": "运行配置",
+        "path": "13-工作流文档/运行配置.json",
+        "schema": "runtime_config",
+        "must_contain": [
+          "video_engine",
+          "advance_mode",
+          "project_style",
+          "target_duration_seconds",
+          "project_resolution"
+        ],
+        "note": "target_duration_seconds 是 S3 时长校验的目标值，缺它 S3 无法开工。"
+      },
+      {
+        "name": "目录结构与命名规则",
+        "path": "项目根（00-故事大纲文档 ~ 13-工作流文档）",
+        "schema": "project_layout",
+        "must_contain": [
+          "13-工作流文档",
+          "01-剧本",
+          "06-分镜",
+          "10-成片"
+        ],
+        "note": "目录与命名按导演要求归 S1；S2 起只按既有目录写，不得自建目录或改名。"
+      }
+    ],
+    "out": [
+      {
+        "name": "剧本正文",
+        "path": "01-剧本/*.md",
+        "schema": "script_markdown",
+        "must_contain": [
+          "场景划分",
+          "人物",
+          "动作",
+          "台词"
+        ],
+        "frozen": "S3 起不得改动剧本正文"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_number": 3,
+      "stage_id": "stage_3_script_generation",
+      "name": "剧本生成",
+      "purpose": "根据用户想法或大纲严格使用内嵌剧本技能生成漫剧剧本；**单集目标时长以启动首问填报的运行配置 target_duration_seconds 为准**（project_form=series 时为单集目标时长、single_short 时为短片目标时长；原固定『120-150 秒』自 v1.24.33 起废止，容差 ±15 秒，见 startup_interaction.duration_target_rules）。",
+      "required_inputs": [
+        "用户上传的想法或大纲",
+        "项目内故事资料",
+        "stage2命名规则"
+      ],
+      "process": [
+        "只读取用户输入和项目内故事资料。",
+        "按剧本技能的人设、冲突前置、笑点密度、即时反转、结尾设计和禁忌规则生成剧本。",
+        "检查剧情逻辑、人物动机、动作因果、台词归属、反转和结尾遗漏。",
+        "本阶段不计算预计时长；时长计算和镜头总时长校验转移到stage4。",
+        "通过双格式自检后写入01-剧本。"
+      ],
+      "self_checks_count": 6
+    }
+  ],
+  "stage_policies": {
+    "stage_3_script_generation": {
+      "skill_source": "embedded_skills.script_skill",
+      "failure_status": "needs_revision"
+    }
+  },
+  "self_checks": {
+    "count": 6,
+    "items": [
+      {
+        "id": "stage_3_script_generation#0",
+        "text": "目标时长按运行配置 target_duration_seconds 执行（series=单集目标时长、single_short=短片目标时长，容差 ±15 秒）；未填报目标时长不得开始，未使用 120／150 或历史项目值兜底",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_3_script_generation#1",
+        "text": "开篇3秒内出现冲突",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_3_script_generation#2",
+        "text": "固定人设惯性与即时反转成立",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_3_script_generation#3",
+        "text": "不存在长段背景介绍、冗余心理描写、无效情节和低级冒犯梗",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_3_script_generation#4",
+        "text": "剧情逻辑、人物动机、动作因果、台词归属、结尾和系列钩子完整",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_3_script_generation#5",
+        "text": "不执行台词字数除以5的时长计算（台词时长换算规则在stage4：1秒5个字）",
+        "p0": false,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [],
+    "full_film_ids": [],
+    "p0_count": 0,
+    "full_film_count": 0,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [],
+  "skills_hint": [
+    "skills/script_skill.md"
+  ],
+  "api_hint": [],
+  "size_bytes": 6976
+}

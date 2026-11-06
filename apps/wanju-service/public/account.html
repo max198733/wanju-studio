@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>玩剧 · 账号与云项目</title>
+  <link rel="icon" href="/wanju.png">
+  <link rel="stylesheet" href="/account.css">
+  <script src="/account.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/"><img src="/wanju.png" width="38" height="38" alt=""><strong>玩剧</strong><span>账号中心</span></a><a href="/download">下载与教程</a></header>
+  <main>
+    <section id="auth">
+      <h1>注册玩剧账号</h1>
+      <p class="intro" id="auth-intro">正在读取账号服务，请稍候。</p>
+      <div class="tabs" role="tablist" aria-label="账户操作">
+        <button id="register-tab" role="tab" aria-selected="true" type="button">首次注册</button>
+        <button id="login-tab" role="tab" aria-selected="false" type="button">已有账号</button>
+      </div>
+      <form id="account-form">
+        <label>玩剧账号<input id="username" autocomplete="username" minlength="3" maxlength="32" required placeholder="3–32 位文字、数字、下划线或短横线"></label>
+        <label>密码<input id="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="设置至少 10 位的玩剧密码"></label>
+        <label data-register>确认密码<input id="confirm-password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+        <label data-register>老师提供的激活码<input id="activation-code" autocomplete="off" maxlength="160" required placeholder="WJA 开头的激活码"></label>
+        <label data-register>联系方式（选填）<input id="contact" maxlength="120" autocomplete="off" placeholder="方便老师通知开通结果的微信或邮箱"></label>
+        <label data-register>给老师的留言（选填）<textarea id="student-note" maxlength="300" rows="2"></textarea></label>
+        <button id="submit" class="primary" type="submit" disabled>正在连接</button>
+        <p id="form-status" class="status" role="status" aria-live="polite"></p>
+      </form>
+      <p class="note">这是玩剧账号，供云项目和默认配置使用；不会自动创建第三方账号。请勿填写其他平台的登录密码。</p>
+    </section>
+    <section id="account" hidden>
+      <div class="title-row"><div><p class="eyebrow">玩剧账户</p><h1 id="account-name"></h1></div><button id="logout" type="button">退出</button></div>
+      <ol class="steps" id="enrollment-steps"><li>注册已提交</li><li id="review-step">老师开通中</li><li id="ready-step">等待确认</li></ol>
+      <h2 id="opening-title">等待老师开通</h2>
+      <p id="opening-message" class="intro"></p>
+      <div id="services" class="services"></div>
+      <div class="balance"><span>可用余额</span><strong><span id="balance">0</span> 玩剧点</strong><span id="balance-yuan"></span></div>
+      <p class="note" id="account-note">注册不扣点。登录后默认基础档直接可用，按实际模型用量自动扣点；余额不足时不会发送请求。账单在桌面软件内查看。自有供应商服务另行计费。</p>
+      <form id="recharge-form">
+        <label>充值码<input id="recharge-code" maxlength="160" autocomplete="off" required placeholder="输入 WJR 充值码"></label>
+        <button id="redeem" class="primary" type="submit">充值</button>
+      </form>
+      <div class="actions"><button id="refresh" type="button">刷新账户</button><a class="primary" href="/download">下载玩剧</a></div>
+      <p id="account-status" class="status" role="status" aria-live="polite"></p>
+      <p class="note">在桌面软件的“账户与权益”中，用同一个账号登录。云项目需在软件内点击“保存到云端”；换电脑后登录并下载打开。</p>
+    </section>
+  </main>
+  <footer>玩剧 · 账号与云项目</footer>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 112,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K36 丝网印刷",
+    "en": "K36 丝网印刷"
+  },
+  "summary": {
+    "zh-CN": "套色、平涂、有点错位",
+    "en": "套色、平涂、有点错位"
+  },
+  "details": {
+    "zh-CN": "适合：有设计感的海报画面\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：有设计感的海报画面\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

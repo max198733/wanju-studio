@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">H3 Blue Professional</title><desc id="desc">羊皮纸底，钴蓝主色，Space Grotesk 标题</desc>
+<rect width="640" height="360" fill="#37485a"/>
+<path d="M0 276H640" stroke="#8bc0b5" stroke-width="2"/>
+<rect x="34" y="34" width="8" height="292" fill="#8bc0b5"/>
+<text x="62" y="86" fill="#8bc0b5" font-family="sans-serif" font-size="18">H STYLE</text>
+<text x="62" y="174" fill="#fff" font-family="sans-serif" font-size="44" font-weight="700">H3 Blue Professional</text>
+<text x="62" y="226" fill="#d5e0df" font-family="sans-serif" font-size="20">羊皮纸底，钴蓝主色，Space Grotesk 标题</text>
+<text x="62" y="314" fill="#b7c8c8" font-family="sans-serif" font-size="15">目录示意 · 非真实样片</text>
+</svg>

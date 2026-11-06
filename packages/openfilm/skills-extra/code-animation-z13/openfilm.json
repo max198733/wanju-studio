@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 127,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z13 水墨漫画",
+    "en": "Z13 水墨漫画"
+  },
+  "summary": {
+    "zh-CN": "毛笔线条加水墨晕染的漫画 / ink-brush comic",
+    "en": "毛笔线条加水墨晕染的漫画 / ink-brush comic"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

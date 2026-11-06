@@ -1,0 +1,59 @@
+{
+  "standard_id": "standards.character_sub_form_policy",
+  "source_workflow_version": "v1.24.34",
+  "source_pointer": "embedded_skills.storyboard_skill.character_sub_form_policy",
+  "gate_readable": true,
+  "purpose": "供闸门脚本与三套分镜技能按需加载；本文件为该标准的唯一真源，骨架与技能文件均只引用不复制。定义角色【子形态】（同一张脸、不同服装/造型）的 ID 规则、ID 映射预存量、映射表 schema、引用规则与资产契约（v1.23.0 新增）。",
+  "payload": {
+    "purpose": "角色资产的默认设定是「一个角色一张定妆照」（基底形态）。本策略允许单个角色追加多个【子形态】——**同一张脸、不同服装/造型**（如日常装 / 战斗装 / 校服 / 受伤状态），并为每个角色预先留好 ID 映射位，使用户在初始不提子形态需求时也能在后续零改动地追加。",
+    "id_rule": {
+      "base_id": "CH + 两位序号（CH01、CH02…），全片唯一，主角固定 CH01；**CHxx 即该角色的【基底形态】**。",
+      "form_id": "CH + 两位序号 + `_C` + 两位形态序号（如 CH01_C02）；`C` = Costume，表示同一角色的第 nn 套服装 / 造型子形态。**`_C01` = 基底形态，与 `CHxx` 等价**（两种写法在比对前做归一等价，视为同一形态）。",
+      "same_face_rule": "同一角色的全部子形态**共用同一张脸**（同一角色身份），只更换服装 / 造型；禁止把不同角色用形态位表达，也禁止同一形态对应两张不同的脸。",
+      "orthogonal_to_version": "形态段 `_C{nn}` 与资产文件迭代版本段 `_v{version}` **正交**：文件名为 `{asset_id}_v{version}.png`，故 `CH01_C02_v1.png` = CH01 角色**第 2 套服装的第 1 版资产**。**禁止再用 `CHxx_v{n}` 表示不同服装/造型**——旧用法（等于把「资产迭代版本」与「服装造型」混用同一段）自 v1.23.0 起废止。",
+      "regex": "^((CH\\d{2}(_C\\d{2})?)|(PRP\\d{2})|(SC\\d{2}(_[FB])?))$",
+      "tag_format": "@[asset_id]_角色资产图，如 @CH01_C02_角色资产图（禁止用角色名替代 asset_id 书写 @ 标记）"
+    },
+    "preallocation_rule": {
+      "rule": "【ID 映射预存量·强制】建档时必须为**每个角色**一次性预置 9 个形态位 `CHxx_C01` ~ `CHxx_C09`，写入 `02-角色/04-说话人ID映射表/说话人ID映射表.json` 中该角色条目的 `sub_forms` 数组。",
+      "default_state": "`C01` = **active**（基底形态，必须生效）；`C02` ~ `C09` = **reserved**（占位保留，未生成资产、未使用）。",
+      "why": "用户初期可能不要求子形态。预存量保证后续追加子形态时**零改动即可启用**——不破坏既有 ID 映射、不牵动下游绑定、不需要重新编号。",
+      "activate_rule": "启用某个预留形态时三步缺一不可：①把该位 `status` 由 `reserved` 改 `active`；②补 `form_name` 与 `outfit_desc`（服装/造型描述）；③生成该形态资产并登记 `applicable_shots`。",
+      "no_deletion": "已分配的形态位**不得删除、不得改号**；不再使用某形态时置 `status=deprecated`（保留历史与既有绑定记录），不得回收号段复用。"
+    },
+    "schema": {
+      "carrier": "`02-角色/04-说话人ID映射表/说话人ID映射表.json` 中每个角色条目的 `sub_forms` 字段（与 **`role_name`**（角色名键，与说话人ID映射表既有 schema 一致） / `asset_id` / `speaker_id` / `voice_id` 同级）",
+      "rule": "本 schema 为角色子形态的唯一真源，字段名与结构一律照抄；禁止改名（历史遗留的 `forms` / `outfits` / `variants` / 中文字段写法一律废止）、禁止另立嵌套层、禁止用自然语言段落代替结构化字段。",
+      "required_fields": {
+        "form_id": "字符串，形态 ID，格式 CH+两位序号+_C+两位序号，如 CH01_C02",
+        "form_name": "字符串，形态名。基底写『基底形态』；已启用的子形态写业务名（如『战斗装』『校服』）；未启用的预留位写『预留位{nn}』",
+        "outfit_desc": "字符串或 null，该形态的服装/造型描述（便服 / 制服 / 战斗装 / 受伤状态等）；`reserved` 位必须为 null",
+        "status": "枚举 active | reserved | deprecated；**C01 必须为 active**",
+        "applicable_shots": "数组，该形态生效的镜头号清单（如 [\"S01_04\",\"S01_05\"]）；`reserved` 位必须为空数组"
+      },
+      "consistency_rule": "① 每个角色必须**恰好 9 个**形态位（C01~C09），不得少、不得多；② C01 必须 active（其余位不限）；③ `form_id` 前缀必须与该角色 `asset_id` 同源（CH01 → CH01_Cxx），禁止跨角色编号；④ `reserved` 位不得出现在任何 `applicable_shots` 里；⑤ **同一镜号只能出现在同一角色的一个形态**的 `applicable_shots` 中（禁止同镜同角色多形态）。"
+    },
+    "reference_rule": {
+      "field_writing": "『场景与人物』栏按角色身份书写：使用**非基底形态**时写作『角色正式名（CHxx_Cnn）』；使用**基底形态**时写作『角色正式名（CHxx）』（等价于 CHxx_C01）。",
+      "single_form_per_shot": "同一镜头内同一角色**只能引用一个形态**；禁止一镜挂同一角色的两个形态（`CH01` 与 `CH01_C02` 不得同镜出现）。",
+      "switch_rule": "形态切换必须在分镜『画面内容』中有**明确着装/造型描述**；同场景内着装未变时沿用同一形态，禁止无描述跳形态。",
+      "single_source_chain": "形态 ID 与人物 ID **同属单源参考链**：『画面内容』（先写，含着装描述）→ 『场景与人物』栏（含形态 ID）→ stage5 按该形态 ID 生成/绑定资产 → stage6 分镜图按该形态 ID 绑参考图 → stage7 视频按同一形态 ID 绑 Subject / ref_image。任一环不得自行增删或换形态。"
+    },
+    "asset_contract": {
+      "asset_naming_rule": "形态资产文件名严格按 `{asset_id}_v{version}.png` 生成，即 `CH{xx}_C{nn}_v{n}.png`（如 `CH01_C02_v1.png`）；本地副本名、资产索引 `asset_id`、公网 URL 登记名三处必须一致。",
+      "active_must_exist": "`status=active` 的每个形态必须有一份资产文件 **+ 各自 verified 公网 URL**，缺任一项即判该形态不可用，阻断依赖该形态的下游镜头。",
+      "reserved_no_asset": "`status=reserved` 的形态**不要求**资产文件与 URL——它是预存量、尚未启用。**闸门不得因 reserved 位无资产而报错。**",
+      "deprecated_note": "`status=deprecated` 的形态保留历史资产与既有的镜头绑定记录，不再被新镜头引用，但不得删除既有绑定。"
+    },
+    "forbidden": [
+      "禁止用 `CHxx_v{n}` 表示不同服装/造型（`_v{n}` 专用于资产迭代版本）",
+      "禁止自创形态后缀（只能用 `_C{两位}`；`_F{nn}` / `_S{nn}` / 汉字后缀等一律非法）",
+      "禁止同一角色同一镜头引用两个形态",
+      "禁止跳过预存量（建档时未为角色预置 C01~C09）",
+      "禁止 reserved 形态挂资产或出现在 applicable_shots",
+      "禁止改号、删号、回收号段",
+      "禁止把不同角色用同一角色的形态位表达（如把 A 的第二套衣服挂到 B 的形态位上）"
+    ],
+    "self_check_contract": "自检核对六项：①全片所有角色形态 ID 命名合规（CHxx_Cnn，且与 asset_id 同源）；②映射表每个角色已预置 C01~C09 且 C01=active；③『场景与人物』栏引用的形态 ID 均已在映射表登记且 status=active；④同一镜同一角色只出现一个形态；⑤active 形态资产齐套（本地副本 + verified 公网 URL）；⑥reserved 形态未挂资产、未出现在任何 applicable_shots。"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 56,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M20 时间线/历史",
+    "en": "M20 时间线/历史"
+  },
+  "summary": {
+    "zh-CN": "一条时间轴往前走，每个节点弹出一件事。",
+    "en": "一条时间轴往前走，每个节点弹出一件事。"
+  },
+  "details": {
+    "zh-CN": "适合：\"这三个月我是怎么走过来的\"、\"AI 是怎么发展到今天的\"。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：\"这三个月我是怎么走过来的\"、\"AI 是怎么发展到今天的\"。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

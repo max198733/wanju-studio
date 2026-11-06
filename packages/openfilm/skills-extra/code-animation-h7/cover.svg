@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">H7 Cartesian</title><desc id="desc">极简留白，暖羊皮纸，墨色标题，灰褐点缀，细线</desc>
+<rect width="640" height="360" fill="#37485a"/>
+<path d="M0 276H640" stroke="#8bc0b5" stroke-width="2"/>
+<rect x="34" y="34" width="8" height="292" fill="#8bc0b5"/>
+<text x="62" y="86" fill="#8bc0b5" font-family="sans-serif" font-size="18">H STYLE</text>
+<text x="62" y="174" fill="#fff" font-family="sans-serif" font-size="44" font-weight="700">H7 Cartesian</text>
+<text x="62" y="226" fill="#d5e0df" font-family="sans-serif" font-size="20">极简留白，暖羊皮纸，墨色标题，灰褐点缀，细线</text>
+<text x="62" y="314" fill="#b7c8c8" font-family="sans-serif" font-size="15">目录示意 · 非真实样片</text>
+</svg>

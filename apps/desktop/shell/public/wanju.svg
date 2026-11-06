@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="玩剧">
+  <rect width="64" height="64" rx="14" fill="#101313"/>
+  <path d="M16 18h32M20 26h24M18 34h28M24 42h16" fill="none" stroke="#20c7b7" stroke-linecap="round" stroke-width="5"/>
+  <circle cx="48" cy="45" r="5" fill="#ff4f87"/>
+</svg>

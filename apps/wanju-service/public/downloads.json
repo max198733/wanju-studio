@@ -1,0 +1,26 @@
+{
+  "released": "2026-11-06",
+  "channel": "preview",
+  "unsigned": true,
+  "serviceUrl": "https://wanju.kukukaka.cn",
+  "desktop": {
+    "version": "2.0.8-rc.7",
+    "released": "2026-11-06",
+    "name": "Wanju-Setup-2.0.8-rc.7-x64.exe",
+    "href": "/releases/Wanju-Setup-2.0.8-rc.7-x64.exe",
+    "bytes": 227975814,
+    "sha256": "8c2478067f609fe15f183b6ab9c91ab3eaf09f8cff49812dbf211a4eb894ac59"
+  },
+  "studentGuide": {
+    "name": "Wanju-Student-Guide.pdf",
+    "href": "/releases/Wanju-Student-Guide.pdf",
+    "bytes": 237947,
+    "sha256": "039e7f39796d92e70a27300ccc7c348ef283adf07cca2ba6d68474b90ddc62a7"
+  },
+  "teacherGuide": {
+    "name": "Wanju-Teacher-Guide.pdf",
+    "href": "/releases/Wanju-Teacher-Guide.pdf",
+    "bytes": 239106,
+    "sha256": "4f6fa0deafdd8a5850fb3eb01c445451e98e79aacb34ef9e6d036e97ba6958b6"
+  }
+}

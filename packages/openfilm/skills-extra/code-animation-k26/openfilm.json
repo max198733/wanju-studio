@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 102,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K26 卡通渲染 3D",
+    "en": "K26 卡通渲染 3D"
+  },
+  "summary": {
+    "zh-CN": "3D 模型但阴影是硬边，有黑描边",
+    "en": "3D 模型但阴影是硬边，有黑描边"
+  },
+  "details": {
+    "zh-CN": "适合：想要 3D 但要卡通感\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：想要 3D 但要卡通感\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

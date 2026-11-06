@@ -1,0 +1,196 @@
+{
+  "contracts_id": "CONTRACTS",
+  "pack_version": "2.1.1",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "purpose": "7 份环节骨架彼此不可见，只靠本文件交接。开工前读本环节 in 并逐项确认实物存在，收工前按 out 交付。",
+  "rule": "任一 out 未按 path+schema 落盘，下一环节有权拒收并写输入缺失清单。禁止口头交接，禁止『在上下文里带过去』，禁止下一环节自己补上游产物。",
+  "chain": [
+    {
+      "from": "S1",
+      "to": "S2",
+      "artifacts": [
+        {
+          "name": "运行配置",
+          "path": "13-工作流文档/运行配置.json",
+          "schema": "runtime_config",
+          "must_contain": [
+            "video_engine",
+            "advance_mode",
+            "project_style",
+            "target_duration_seconds",
+            "project_resolution"
+          ],
+          "note": "target_duration_seconds 是 S3 时长校验的目标值，缺它 S3 无法开工。"
+        },
+        {
+          "name": "目录结构与命名规则",
+          "path": "项目根（00-故事大纲文档 ~ 13-工作流文档）",
+          "schema": "project_layout",
+          "must_contain": [
+            "13-工作流文档",
+            "01-剧本",
+            "06-分镜",
+            "10-成片"
+          ],
+          "note": "目录与命名按导演要求归 S1；S2 起只按既有目录写，不得自建目录或改名。"
+        }
+      ]
+    },
+    {
+      "from": "S2",
+      "to": "S3",
+      "artifacts": [
+        {
+          "name": "剧本正文",
+          "path": "01-剧本/*.md",
+          "schema": "script_markdown",
+          "must_contain": [
+            "场景划分",
+            "人物",
+            "动作",
+            "台词"
+          ],
+          "frozen": "S3 起不得改动剧本正文"
+        }
+      ]
+    },
+    {
+      "from": "S3",
+      "to": "S4",
+      "artifacts": [
+        {
+          "name": "场次分镜卡",
+          "path": "06-分镜/02-场次分镜卡/*.md",
+          "schema": "storyboard_card",
+          "must_contain": [
+            "镜号",
+            "持续时长",
+            "机位",
+            "景别",
+            "光影",
+            "场景与人物",
+            "画面内容",
+            "运镜",
+            "音效"
+          ]
+        },
+        {
+          "name": "场景人物清单",
+          "path": "06-分镜/01-分镜管线/场景人物清单.json",
+          "schema": "scene_roster",
+          "must_contain": [
+            "scene_id",
+            "asset_id",
+            "正式名",
+            "站位"
+          ]
+        },
+        {
+          "name": "分镜总时长统计",
+          "path": "06-分镜/01-分镜管线/分镜总时长统计.json",
+          "schema": "duration_stat"
+        },
+        {
+          "name": "说话人ID映射表",
+          "path": "02-角色/04-说话人ID映射表/说话人ID映射表.json",
+          "schema": "speaker_map",
+          "must_contain": [
+            "speaker_id",
+            "voice_id",
+            "asset_id"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "S4",
+      "to": "S5",
+      "artifacts": [
+        {
+          "name": "定妆照与子形态图",
+          "path": "02-角色/01-定妆照/",
+          "schema": "image_files"
+        },
+        {
+          "name": "场景与道具图",
+          "path": "03-场景/、04-参考素材/01-道具/",
+          "schema": "image_files"
+        },
+        {
+          "name": "生图提示词",
+          "path": "04-参考素材/03-资产提示词/",
+          "schema": "prompt_files"
+        },
+        {
+          "name": "声音圣经与基准音轨",
+          "path": "02-角色/03-音色圣经与基准音轨/",
+          "schema": "voice_bible",
+          "must_contain": [
+            "voice_id",
+            "声线文字设定",
+            "基准MP3"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "S5",
+      "to": "S6",
+      "artifacts": [
+        {
+          "name": "分镜图提示词",
+          "path": "07-分镜提示词/",
+          "schema": "prompt_files"
+        },
+        {
+          "name": "分镜静态图",
+          "path": "08-分镜静态图/",
+          "schema": "image_files"
+        }
+      ]
+    },
+    {
+      "from": "S6",
+      "to": "S7",
+      "artifacts": [
+        {
+          "name": "公网素材URL索引",
+          "path": "08-分镜公网URL/公网素材URL索引.json",
+          "schema": "public_url_index",
+          "must_contain": [
+            "asset_id",
+            "xem8k5_returned_url",
+            "verified"
+          ],
+          "hard_rule": "S7 只接受 verified=true 的 URL；任一绑定找不到 verified URL 即阻断该镜"
+        },
+        {
+          "name": "分镜图册",
+          "path": "08-分镜图册/",
+          "schema": "album_html"
+        }
+      ]
+    },
+    {
+      "from": "S7",
+      "to": null,
+      "artifacts": [
+        {
+          "name": "成片视频",
+          "path": "10-成片/",
+          "schema": "video_files",
+          "must_contain": [
+            "文件 >10KB",
+            "容器头签名正确",
+            "可播放"
+          ],
+          "note": "本工作流终点。不剪辑、无返工环节。"
+        }
+      ]
+    }
+  ],
+  "excluded": {
+    "stage8_revision_confirmation_and_redo": "导演决定砍掉返工环节，出片即交付。rollback_and_revision 协议保留在红线层，供 S3-S7 内部回滚。",
+    "full_pass_review": "原由 stage8 收口的全片复核未纳入任何环节（导演决定不设卡点）。跨环节一致性（角色名统一、总时长对账、台词归属）由导演人工把关。"
+  }
+}

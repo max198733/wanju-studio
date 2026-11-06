@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 30,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "E2 剪纸层叠",
+    "en": "E2 剪纸层叠"
+  },
+  "summary": {
+    "zh-CN": "一层层纸片有阴影，前快后慢地移动。",
+    "en": "一层层纸片有阴影，前快后慢地移动。"
+  },
+  "details": {
+    "zh-CN": "适合：童年、故事、温柔的段落\n分类：E 图形与纸\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：童年、故事、温柔的段落\n分类：E 图形与纸\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

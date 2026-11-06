@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>玩剧 · 运营后台</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/enrollment.js" defer></script>
+  <script src="/admin.js" defer></script>
+  <script src="/media-admin.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="brand"><span class="brand-icon" aria-hidden="true">玩</span><div><p class="eyebrow">WANJU STUDIO</p><h1>运营后台</h1></div><button id="admin-logout" class="secondary quiet-link" hidden>退出后台</button></header>
+    <section id="login" class="privacy">
+      <form id="login-form" class="form-grid compact">
+        <label class="wide">后台登录密码<input id="admin-secret" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">进入后台</button><p class="status wide" id="login-status" role="status"></p>
+      </form>
+    </section>
+    <div id="dashboard" hidden>
+      <nav class="tabs" aria-label="后台内容"><button data-tab="overview" class="active">总览</button><button data-tab="media">默认模型配置</button><button data-tab="cloud">云项目与服务费</button><button data-tab="enrollments">历史人工开通</button><button data-tab="cards">激活与充值卡</button><button data-tab="chat">创作助手</button></nav>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <section class="pane" data-pane="overview">
+        <div class="toolbar"><h2>服务总览</h2><button id="refresh" class="secondary" aria-label="刷新" title="刷新">↻</button></div>
+        <dl id="totals" class="stats"></dl>
+        <h3>请求诊断</h3>
+        <form id="operation-lookup" class="operation-lookup">
+          <label for="operation-id">请求编号</label>
+          <div><input id="operation-id" type="search" placeholder="粘贴报错中的完整请求编号" autocomplete="off" maxlength="36" required pattern="[a-fA-F0-9-]{36}"><button class="secondary" type="submit">查询</button></div>
+        </form>
+        <p id="operation-status" class="status" role="status"></p>
+        <dl id="operation-result" class="operation-result" hidden></dl>
+        <h3>用户账户</h3>
+        <p><input id="user-search" type="search" placeholder="按账号名筛选，输入即过滤" aria-label="筛选用户账号" autocomplete="off"></p>
+        <div class="table-scroll"><table><thead><tr><th>账号</th><th>余额</th><th>创建时间</th><th>状态</th><th>管理</th></tr></thead><tbody id="users"></tbody></table></div>
+        <h3>待核对请求</h3>
+        <p id="review-summary" class="muted" role="status"></p>
+        <div class="table-scroll"><table><thead><tr><th>用户</th><th>预留</th><th>请求</th><th>处理</th></tr></thead><tbody id="operations"></tbody></table></div>
+        <div class="review-pagination" aria-label="待核对请求分页"><button id="review-prev" class="secondary" type="button" disabled>上一页</button><span id="review-page">第 1 / 1 页</span><button id="review-next" class="secondary" type="button" disabled>下一页</button></div>
+      </section>
+      <section class="pane" data-pane="cloud" hidden>
+        <h2>生成成功服务费</h2>
+        <p class="muted">所有创作者使用相同客户端。供应商收取生成费用，玩剧另收软件服务费。保存云项目、下载、重复同步不算生成次数。此处云项目生成服务费默认关闭，启用后仍需用户单独确认该项费用。</p>
+        <form id="cloud-prices-form" class="form-grid">
+          <label>每次成功图片服务费（元）<input id="cloud-image-price" type="number" min="0" max="10000" step="0.01" value="0.05" required></label>
+          <label>每次成功视频服务费（元）<input id="cloud-video-price" type="number" min="0" max="10000" step="0.01" value="0.01" required></label>
+          <label class="check wide"><input id="cloud-fees-enabled" type="checkbox">启用成功生成服务费</label>
+          <button class="primary" type="submit">保存服务费设置</button>
+          <p id="cloud-prices-status" class="status wide" role="status"></p>
+        </form>
+        <h2>账号云空间</h2>
+        <p class="muted">已用空间包含未完成同步预留；配额只限制账号空间，不会自动购买存储。历史版本和未引用文件也计入用量；需按实际磁盘和备份容量设置配额。</p>
+        <div class="table-scroll"><table><thead><tr><th>账号</th><th>已用</th><th>配额</th><th>管理</th></tr></thead><tbody id="cloud-users"></tbody></table></div>
+      </section>
+      <section class="pane" data-pane="media" hidden>
+        <div class="toolbar"><h2>云端默认供应商</h2><button id="media-refresh" type="button" class="secondary">刷新</button></div>
+        <p class="muted">按图片、视频、音频设置默认供应商。模板不含密钥；在总览的“媒体密钥”中为账号分配独立密钥，客户端登录后自动同步。供应商直接计费，此处不会试发生成请求。</p>
+        <div id="media-defaults" class="form-grid"></div>
+        <div id="media-profile-list"></div>
+        <button id="media-add" class="secondary" type="button">添加供应商</button>
+        <button id="media-save-defaults" class="primary" type="button">保存默认配置</button>
+        <p id="media-status" class="status" role="status"></p>
+        <h2 style="margin-top:28px">媒体生成按次计费</h2>
+        <p class="muted">开启后，学员通过服务端代理生成时按次扣点，密钥不出服务端。上游拒绝全额退回；断网或超时保留并转待核对，不会自动重发。关闭则学员无法走代理生成。</p>
+        <form id="media-prices-form" class="form-grid">
+          <label>图片（点 / 张）<input id="media-price-image" type="number" min="0" max="1000000" step="1" required></label>
+          <label class="check"><input id="media-price-image-on" type="checkbox">开启图片按次计费</label>
+          <label>视频（点 / 段）<input id="media-price-video" type="number" min="0" max="1000000" step="1" required></label>
+          <label class="check"><input id="media-price-video-on" type="checkbox">开启视频按次计费</label>
+          <button class="primary" type="submit">保存计费设置</button>
+          <p id="media-prices-status" class="status wide" role="status"></p>
+        </form>
+      </section>
+      <section class="pane" data-pane="cards" hidden>
+        <h2>生成充值与激活卡</h2>
+        <form id="cards-form" class="form-grid">
+          <label>卡种<select id="card-kind"><option value="activation">激活码</option><option value="recharge">充值卡</option></select></label>
+          <label>数量<input id="card-count" type="number" value="1" min="1" max="100" required></label>
+          <label>充值点数<input id="card-points" type="number" value="0" min="0" max="10000000" required></label>
+          <label>有效期（天）<input id="card-days" type="number" value="365" min="1" max="3650" required></label>
+          <label class="wide">批次备注<input id="card-label" maxlength="100" placeholder="例如：11月充值批次"></label>
+          <button class="primary" type="submit">生成卡密</button>
+        </form>
+        <p class="muted">每张卡仅显示一次。生成后立即下载并保存 CSV；遗失的未使用卡需作废后重新生成。</p>
+        <div id="created-codes" class="codes" hidden><div class="toolbar"><strong>本次新卡密</strong><button id="download-codes" class="secondary">下载 CSV</button></div><div id="code-list"></div></div>
+        <h3>卡密状态</h3>
+        <p><input id="code-search" type="search" placeholder="按尾号或批次备注筛选" aria-label="筛选卡密" autocomplete="off"></p>
+        <div class="table-scroll"><table><thead><tr><th>卡种</th><th>尾号</th><th>点数</th><th>批次</th><th>状态</th><th>管理</th></tr></thead><tbody id="codes"></tbody></table></div>
+      </section>
+      <section class="pane" data-pane="enrollments" hidden>
+        <div class="toolbar"><h2>学员注册与人工开通</h2><button id="refresh-enrollments" class="secondary" type="button">刷新申请</button></div>
+        <p class="muted">学员注册入口：<a href="/register" target="_blank" rel="noopener">打开注册页</a>。注册后先等待老师处理，再确认开通；系统不自动在第三方平台注册账号。</p>
+        <p id="enrollment-count" class="status"></p>
+        <div class="table-scroll"><table><thead><tr><th>学员账号</th><th>注册时间</th><th>开通状态</th><th>管理</th></tr></thead><tbody id="enrollments"></tbody></table></div>
+      </section>
+      <section class="pane" data-pane="chat" hidden>
+        <h2>售价测算</h2>
+        <form id="pricing-form" class="form-grid">
+          <label>计价单位<select id="pricing-unit" aria-label="计价单位"><option value="input-million">百万输入 Token</option><option value="output-million">百万输出 Token</option><option value="image">每张图片</option><option value="video-second">每秒视频</option><option value="video-clip">每段视频</option></select></label>
+          <label>供应商单位成本（元）<input id="pricing-cost" type="number" min="0.0001" max="1000000" step="0.0001" required></label>
+          <label>售价倍数<input id="pricing-multiplier" type="number" min="1" max="10" step="0.01" value="2" required></label>
+          <label>预计数量<input id="pricing-quantity" type="number" min="1" max="100000" step="1" value="1" required></label>
+          <button class="secondary" type="submit">计算售价</button>
+          <p id="pricing-result" class="status wide" role="status"></p>
+        </form>
+        <p class="muted">填入你的实际采购成本。2倍售价的账面毛利率约50%，还需扣除重试损耗、支付和服务器费用。测算不修改现有售价；图片和视频的成功服务费以“云项目与服务费”的设置为准。</p>
+        <h2>创作助手接入与售价</h2>
+        <p class="muted">基础档默认供新用户使用，登录后按实际用量自动扣点，无需再点启用或价格确认。增强档与高阶档分别配置对应的供应商分组密钥；每个档位验证通过后再开放。用户点选即切换，切档不发送模型请求；档位菜单显示对应单价。</p>
+        <form id="chat-form" class="form-grid">
+          <label>正在编辑的档位<select id="chat-tier"><option value="base">基础档</option><option value="claude">增强档</option><option value="claude-max">高阶档</option></select></label>
+          <label>新账号默认档位<select id="chat-default-tier"><option value="base">基础档</option><option value="claude">增强档</option><option value="claude-max">高阶档</option></select></label>
+          <label>接入地址<input id="chat-url" type="url" placeholder="https://api.example.com/v1" required></label>
+          <label>模型名称<input id="chat-model" maxlength="200" placeholder="服务商提供的准确模型名" required></label>
+          <label>接口协议<select id="chat-format"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></label>
+          <label>使用方式<select id="chat-billing"><option value="wallet">钱包按用量扣点</option><option value="included">内部默认助手，不扣用户钱包</option></select></label>
+          <label>每用户近24小时请求上限（内部模式）<input id="chat-daily-limit" type="number" min="1" max="10000" value="200" required></label>
+          <label>服务商密钥<input id="chat-key" type="password" maxlength="400" autocomplete="new-password" placeholder="留空不更换已保存的密钥"></label>
+          <label>用户显示名称<input id="chat-name" maxlength="80" value="玩剧创作助手" required></label>
+          <label>输入售价（玩剧点 / 百万Token）<input id="chat-input-price" type="number" min="1" max="1000000000" required></label>
+          <label>输出售价（玩剧点 / 百万Token）<input id="chat-output-price" type="number" min="1" max="1000000000" required></label>
+          <label>缓存读取售价（点 / 百万Token）<input id="chat-cache-read-price" type="number" min="0" max="1000000000" step="0.0001" placeholder="读写均留空则按普通输入计费"></label>
+          <label>缓存写入售价（点 / 百万Token）<input id="chat-cache-write-price" type="number" min="0" max="1000000000" step="0.0001" placeholder="读写均留空则按普通输入计费"></label>
+          <label>最大上下文 Token<input id="chat-context" type="number" min="32000" max="2000000" step="1000" value="32000" required></label>
+          <label>最大回答 Token<input id="chat-max-output" type="number" min="16" max="32000" step="1" value="4096" required></label>
+          <label>每次请求最多预留点数<input id="chat-reserve" type="number" min="0" max="10000000" value="0" required></label>
+          <button id="chat-use-prices" class="secondary" type="button">填入截图双倍售价</button>
+          <label class="check wide"><input id="chat-vision" type="checkbox">我已实测此档位支持看图、工具调用与连续流式回复</label>
+          <label class="check wide"><input id="chat-enabled" type="checkbox">允许已登录用户在对话中使用这个服务</label>
+          <button class="primary" type="submit">保存设置</button><button id="chat-check" class="secondary" type="button">检查已保存线路</button><span id="chat-key-status" class="muted"></span>
+        </form>
+        <p id="chat-check-status" class="status wide" role="status" aria-live="polite"></p>
+        <p class="muted">内部模式由运营方承担上游模型费用，用户无需确认钱包售价；每次模型请求计入近24小时上限，一次制作可能有多次请求。密钥仅在云端保存。模型名称与协议以供应商实际支持为准，修改配置不会自动发起测试请求。保存后可手动检查已保存线路；检查只读取供应商的模型目录，不发送创作内容，也不扣点。</p>
+        <p class="muted">成本按供应商账单核对，售价以玩剧点计算，100点 = 用户端 ¥1.00。登录后可直接使用已开放档位；用户按菜单展示的单价和实际用量扣点，无单独确认步骤。价格调整后新请求使用新价，已开始请求按原价格快照结算。余额不足时预留失败，不会联系供应商。每次模型请求分别预留与结算；用量缺失或结果不明的请求保留预留，需先核账。一次创作可能包含多次模型请求。</p>
+        <p class="muted">缓存读写售价须同时填写，最多4位小数。缓存计数须包含在上游总输入中；已报告的缓存用量不重复按普通输入计费。启用后缺少缓存明细或计数矛盾的请求进入待核对，不推定为普通输入。</p>
+      </section>
+    </div>
+    <dialog id="enrollment-dialog">
+      <form id="enrollment-form">
+        <div class="toolbar"><h2 id="enrollment-title">学员开通</h2><button id="close-enrollment" class="secondary" type="button">关闭</button></div>
+        <p id="enrollment-contact" class="muted"></p>
+        <p id="enrollment-student-note" class="muted"></p>
+        <p class="muted">在第三方平台手动办理后，登记账号及配置。密钥仅保存在云端，不发送给学员；图片、视频、音乐当前仅登记，真实生成与扣费仍待接入。</p>
+        <div id="enrollment-channels"></div>
+        <div class="form-grid">
+          <label class="wide">内部备注（仅老师可见）<textarea id="enrollment-teacher-note" rows="2" maxlength="500"></textarea></label>
+          <label class="wide">给学员的开通说明<textarea id="enrollment-student-message" rows="2" maxlength="300" placeholder="例如：已收到，预计明天上课前完成开通"></textarea></label>
+        </div>
+        <p id="enrollment-status" class="status" role="status" aria-live="polite"></p>
+        <div class="enrollment-actions"><button id="save-enrollment" class="secondary" type="submit" value="pending">保存处理进度</button><button id="approve-enrollment" class="primary" type="submit" value="ready">保存并确认开通</button></div>
+      </form>
+    </dialog>
+    <dialog id="media-profile-dialog">
+      <form id="media-profile-form" class="form-grid">
+        <h2 class="wide">供应商模板</h2>
+        <label>名称<input id="media-name" maxlength="80" required></label>
+        <label>类别<select id="media-category"><option value="image">图片</option><option value="video">视频</option><option value="audio">音频</option></select></label>
+        <label>接口协议<select id="media-adapter"><option value="openai-image">OpenAI 兼容图片</option><option value="seedance">Seedance / 方舟兼容视频</option><option value="h3-single">AutoDL H3 首帧</option><option value="custom-http">自定义 HTTP</option></select></label>
+        <label>模型名称<input id="media-model" maxlength="200"></label>
+        <label class="wide">完整 API 地址<input id="media-url" type="url" required></label>
+        <label>图片返回方式<select id="media-format"><option value="b64_json">直接返回图片</option><option value="url">下载地址</option></select></label>
+        <label>自定义认证请求头<input id="media-auth" value="Authorization: Bearer {key}"></label>
+        <label class="wide">自定义 HTTP 调用说明<textarea id="media-note" rows="4" maxlength="1600"></textarea></label>
+        <p class="wide muted">图片填写基础地址或 /v1；方舟填写以 /contents/generations/tasks 结尾的任务地址；H3 填写以 /minimax_h3_zm_nono 结尾的完整地址。</p>
+        <button id="media-profile-cancel" class="secondary" type="button">取消</button><button class="primary" type="submit">加入待保存配置</button>
+      </form>
+    </dialog>
+    <dialog id="media-keys-dialog">
+      <form id="media-keys-form">
+        <h2 id="media-keys-title">账号媒体密钥</h2>
+        <p class="muted">填写这个账号的独立供应商密钥。留空保留已存密钥；密钥将通过 HTTPS 下发到该账号的客户端，不应填写你的共用主密钥。</p>
+        <div id="media-keys-fields" class="form-grid"></div>
+        <p id="media-keys-status" class="status" role="status"></p>
+        <button id="media-keys-cancel" class="secondary" type="button">关闭</button><button class="primary" type="submit">保存账号密钥</button>
+      </form>
+    </dialog>
+  </main>
+</body>
+</html>

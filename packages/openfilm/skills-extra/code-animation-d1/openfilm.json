@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 25,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "D1 雨窗",
+    "en": "D1 雨窗"
+  },
+  "summary": {
+    "zh-CN": "玻璃上的雨滴，后面是虚化的夜灯。",
+    "en": "玻璃上的雨滴，后面是虚化的夜灯。"
+  },
+  "details": {
+    "zh-CN": "适合：等待、夜里、想念\n分类：D 光与天气\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：等待、夜里、想念\n分类：D 光与天气\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

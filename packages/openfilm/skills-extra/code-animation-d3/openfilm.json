@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 27,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "D3 雪与火星",
+    "en": "D3 雪与火星"
+  },
+  "summary": {
+    "zh-CN": "雪往下落，几点火星往上飘。",
+    "en": "雪往下落，几点火星往上飘。"
+  },
+  "details": {
+    "zh-CN": "适合：告别、结束、冷里的一点热\n分类：D 光与天气\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：告别、结束、冷里的一点热\n分类：D 光与天气\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

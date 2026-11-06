@@ -1,0 +1,500 @@
+{
+  "layer": "support",
+  "core_id": "CORE-SUPPORT",
+  "pack_name": "何导工作流组合包",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "role": "支撑层：不属红线，但只要在本机动手就会用到。按 by_stage 提示决定是否读，读到过一次即可复用，不必每环节重读。",
+  "read_rule": "S1 全读；其他环节先看 by_stage，命中才读对应章节。",
+  "sections": {
+    "local_execution_environment": {
+      "desc": "本地执行环境的坑（bash/powershell/删除/图像源）",
+      "content": {
+        "purpose": "本机执行环境约束（环境事实，非创作/流程规则）。用于避免助手把时间浪费在已被实测证伪的做法上。换机器、换会话后必须重新实测，不得直接沿用本条结论。",
+        "applies_to": "在所有阶段执行生成、下载、排查、脚本落地、文件操作时适用。",
+        "bash_and_sandbox": {
+          "sandbox_proxy": "Bash 工具会注入 HTTP_PROXY / HTTPS_PROXY / http_proxy / https_proxy = http://127.0.0.1:61887。部分站点会被代理拦下并返回伪造的拦截页（外观像风控，实为代理拦截）。判定方法：curl -4 -s -o /dev/null -w \"%{remote_ip}\" 返回 127.0.0.1 即已被接管。",
+          "disable_sandbox_does_not_clear_env": "dangerouslyDisableSandbox 不会清除上述代理环境变量；需要干净网络时必须在命令开头 unset，并 export NO_PROXY=\"*\"。",
+          "coreutils_availability_unstable": "coreutils 可用性在不同会话间不一致：曾出现 ls / cat / grep / head / tail / sleep / mkdir / env / dirname 全部 command not found（同一台机器、另一些会话则完全可用，例如 2026-10-15 实测 ls / mkdir / curl 正常）。因此：脚本不要假定这些命令一定存在；一旦报 command not found，文件读写、字符串处理、延时就改用 Node（fs + setTimeout）或本机 Python 绝对路径。",
+          "no_pipe_on_scripts": "不要把补丁 / 校验脚本的输出接管道（grep / head / tail）：在这些命令缺失的会话里会返回退出码 127 并吞掉全部 stdout，造成「看起来没跑」的假象——而脚本其实已经执行完毕、真源已被改（这是本机最危险的一类假象：以为失败，其实已生效）。不接管道运行是唯一安全姿势；要看长输出就在脚本内部用 Python 自行截断。",
+          "no_bash_c_inline": "禁止用 bash -c 内联做字符串替换或写长文本：目标文本常含反引号，双引号内的反引号会被 shell 当命令替换执行、转义也会被吃掉；表现为替换假失败，或写出的文件被静默吞掉所有反引号内容。改文件一律用 Write / Edit 工具，或把改动写成 .py 文件再执行。"
+        },
+        "powershell": {
+          "no_gui_process": "不能启动浏览器或任何 GUI 进程（Start-Process / .NET Process.Start 会被静默掐死，exit 1 且日志都写不完）。",
+          "stdout_not_echoed": "stdout 不回显，必须把结果 Out-File 到文件，再用 Read 工具读取。",
+          "network_clean": "网络干净、无沙箱代理，适合做纯 HTTP 探测与文件下载；出图 CDN 的落地下载优先走这里（Bash/Node 沙箱内下载易被 SIGTERM 掐死）。",
+          "policy_blocks": "安全策略会拦 Add-Type 与 New-Object -ComObject（COM 实例化被判定为可执行任意代码）。因此无法 P/Invoke 查令牌完整性级别，也无法用 Shell COM 解析 .lnk 快捷方式。",
+          "case_insensitive_variables": "变量名大小写不敏感：$A 与 $a 是同一个变量。foreach ($a in $A.items) 会立刻把根对象覆盖成当前元素，导致循环体内取根字段全为 null，且只报非终止错误、脚本照样往下跑；根对象与循环变量必须使用不同前缀，并在循环外先把根字段取成局部变量。"
+        },
+        "file_delete_and_recycle_bin": {
+          "safe_delete_false_failure": "Remove-Item / Clear-RecycleBin 会「假失败」：操作实际已成功，却抛出 trash-failed 或「系统找不到指定的文件」。绝不可据异常判断成败，一切以操作前后的实测体积 / Test-Path 为准。",
+          "sandbox_writable_scope": "沙箱只把少数目录划为可写区；其它路径的删除会被导向回收站，而回收站写入被拦 → fail-closed。加 dangerouslyDisableSandbox 也无法解决。",
+          "recycle_bin_is_only_recovery_channel": "回收站是唯一可恢复通道，C 盘上限约 10 GB，超限会自动永久清除最旧条目。大批量删除前必须先确认「可接受不可恢复」。",
+          "locked_directory": "被进程持句柄的目录删不掉，需先结束占用进程。",
+          "permanent_delete_last_resort": "[System.IO.Directory]::Delete 可绕过钩子，但属永久删除（等于绕开安全层）；只在导演明确同意不可恢复时才可使用。"
+        },
+        "image_sources": {
+          "available": [
+            "必应图片 cn.bing.com/images/async",
+            "百度图片 image.baidu.com/search/acjson",
+            "360 图片 image.so.com/j"
+          ],
+          "unavailable": [
+            "搜狗图片（返回 forbid）",
+            "小红书网页版（强制登录）"
+          ],
+          "rule": "素材采集只用实测可用源；不可用源不得反复重试浪费时间。"
+        },
+        "tool_layer_discipline": {
+          "no_parallel_edit_same_file": "同一文件禁止并行 Edit：在同一条消息里对同一文件发两个 Edit，后者会基于前者写入之前的快照改写，把前一处改动静默覆盖，且两次都返回「成功」。同一文件的多处改动必须串行（发一条、拿结果、再发下一条），改完必须回读关键行确认真的落地。",
+          "parser_change_requires_sample_dump": "解析器改完必须打印样本复核（用 repr(字段值)）。只看脚本 overall=PASS 不足以证明解析正确——字段解析写错会让整类检查空转，而结果照样 PASS。",
+          "batch_generation_field_count_check": "批量生成脚本必须做「源 → 产物」的逐字段计数比对，逐项相等才可判定成功；判定条件写错会静默丢掉整类字段，而脚本照旧打印「成功」。"
+        },
+        "browser_and_software": {
+          "browser_automation": "本机浏览器控制默认未启用；agent-browser 从 storage.googleapis.com 下载 Chrome 在国内必然超时。不得另起新浏览器会话（新会话等于让使用人重新登录）。",
+          "preinstalled": "本机常驻：360 安全卫士、Quark、TSBrowser、Doubao、Cici、搜狗输入法、lghub、WPS、微信、WorkBuddy。自动化取用前先确认占用情况。"
+        },
+        "enforcement": "本条为环境事实约束，不参与闸门判定；违反时表现为「命令无输出 / 操作假成功 / 文件被静默改写」。"
+      }
+    },
+    "project_layout": {
+      "desc": "项目目录结构与命名（每环节写文件都要对照）",
+      "content": {
+        "root": "当前项目文件夹",
+        "directories": {
+          "00-故事大纲文档": "用户想法、大纲和故事资料",
+          "01-剧本": "stage3剧本",
+          "02-角色/01-定妆照": "角色资产图片",
+          "02-角色/02-定妆照提示词": "角色资产提示词",
+          "02-角色/03-音色圣经与基准音轨": "保存角色固定声线文字设定、声线版本记录、可选的用户提供基准音轨、stage5生成的声音圣经MP3声线资产（voice_id锁定，命名voice_{voice_id}_声线_v{version}.mp3）与候选筛选记录；stage4首次生成固定声线文字设定，stage5生成并锁定声线音频资产",
+          "02-角色/04-说话人ID映射表": "保存全片角色说话人ID映射（角色名→(S1)/(S2)…，全局唯一、跨镜头跨场景锁定），stage4建立、stage7校验；禁止按镜头临时编号",
+          "03-场景": "场景资产图片和资料",
+          "04-参考素材/01-道具": "道具资产图片",
+          "04-参考素材/02-风格参考": "项目风格参考",
+          "04-参考素材/03-资产提示词": "场景和道具资产提示词",
+          "05-风格": "项目确认的风格配置",
+          "06-分镜/01-分镜管线": "分镜中间记录和索引",
+          "06-分镜/02-场次分镜卡": "stage4分镜头脚本",
+          "07-分镜提示词": "stage6分镜图提示词和stage7视频提示词",
+          "08-分镜静态图": "stage6分镜图",
+          "08-分镜公网URL": "stage6.5上传或托管后的角色、道具、场景和分镜图公网URL及映射记录",
+          "08-分镜图册": "stage6.6分镜图册（分镜脚本原文与分镜图逐镜合版）",
+          "09-音乐": "只保存项目已有音频资料，本版本不新增音乐阶段",
+          "10-成片": "stage7下载视频",
+          "11-工作流脚本": "项目内执行脚本和运行记录",
+          "12-质检": "JSON和Markdown自检结果",
+          "13-工作流文档": "本JSON、运行配置、阶段状态、缺失输入、回滚、版本和API任务索引"
+        },
+        "naming": {
+          "rule": "优先沿用当前项目已有命名规则；项目尚无规则时使用以下模式。",
+          "asset_id_rules": {
+            "character": "CH + 两位序号（CH01、CH02…），全片唯一，主角固定 CH01；**CHxx 即该角色的【基底形态】**。单个角色可追加【子形态】（同一张脸、不同服装/造型），写法 = CH + 两位序号 + `_C` + 两位形态序号（如 CH01_C02，C=Costume）；`_C01` 与 `CHxx` 等价。真源 standards/character_sub_form_policy.json",
+            "scene": "SC + 两位序号（SC01…），全片唯一；含正反打/过肩的场景按面登记面 ID：正面 SCxx_F、背面 SCxx_B（面 ID 即该面场景资产 asset_id，asset_type=scene）",
+            "prop": "PRP + 两位序号（PRP01…），全片唯一；仅关键道具与分镜明确要求的道具参与资产与参考图绑定，单镜道具 ≤2 个",
+            "regex": "^((CH\\d{2}(_C\\d{2})?)|(PRP\\d{2})|(SC\\d{2}(_[FB])?))$",
+            "tag_format": "@[asset_id]_角色资产图（含子形态，如 @CH01_C02_角色资产图） / @[asset_id]_场景资产图 / @[asset_id]_道具资产图（禁止用角色名、场景名或别名替代 asset_id 书写@标记）",
+            "source_of_truth": "详见 embedded_skills.image_prompt_skill.multi_reference_binding_contract.asset_id_rule、stage4 的 character_identity_registry_policy 与 standards/character_sub_form_policy.json（角色子形态）"
+          },
+          "patterns": {
+            "script": "S{scene_number}_剧本_v{version}.md",
+            "speaker_id_map": "说话人ID映射表_v{version}.json",
+            "storyboard": "S{scene_number}_分镜头脚本_v{version}.md",
+            "storyboard_album": "S{scene_number}_分镜图册_v{version}.html",
+            "storyboard_album_index": "分镜图册清单_v{version}.json",
+            "asset_prompt": "{asset_id}_生图提示词_v{version}.md",
+            "asset_image": "{asset_id}_v{version}.png",
+            "voice_audio": "voice_{voice_id}_声线_v{version}.mp3",
+            "voice_candidate": "voice_{voice_id}_声线候选{candidate_index}_v{version}.mp3",
+            "voice_video": "voice_{voice_id}_声线视频_v{version}.mp4",
+            "shot_image_prompt": "{shot_id}_分镜图提示词_v{version}.md",
+            "shot_image": "{shot_id}_分镜图_v{version}.png",
+            "video_prompt": "{shot_id}_视频提示词_v{version}.md",
+            "video": "{shot_id}_视频_v{version}.mp4",
+            "shot_group_id": "G{场次两位}_{组序两位}（如 G05_03 = 场5第3组；全片唯一，仅 seedance2.5 项目登记）",
+            "shot_group_video": "{shot_group_id}_视频_v{version}.mp4（仅 seedance2.5 项目：以镜头组为视频单元，组内不再逐镜出视频）",
+            "shot_group_list": "镜头组清单_v{version}.json（06-分镜/01-分镜管线/；仅 seedance2.5 项目产出）"
+          }
+        }
+      }
+    },
+    "runtime_control": {
+      "desc": "运行配置：字段含义、引擎短号解析、中途换引擎影响清单、运行中改推进方式的流程",
+      "content": {
+        "purpose": "允许用户在工作流运行中修改推进方式。",
+        "commands": {
+          "切换为自动推进": "将运行配置中的advance_mode改为auto。当前阶段继续执行；当前阶段通过自检后自动推进。",
+          "切换为手动推进": "将运行配置中的advance_mode改为manual。当前阶段继续执行；当前阶段通过自检后暂停。",
+          "切换为图册半自动推进": "将运行配置中的advance_mode改为album_semiauto。当前阶段继续执行；stage1至stage6.6按自动规则推进（自检通过自动进入下一阶段），stage6.6分镜图册交付后暂停进入图册审阅闸门，等待用户确认图册无问题后再继续stage7。（图册审阅闸门实体定义见 stage_workflow(7).album_review_gate）",
+          "查看当前推进模式": "读取并报告运行配置中的advance_mode及最近修改记录。",
+          "暂停工作流": "将workflow_control设为paused；已被API受理的任务继续记录状态，但不启动新阶段或新任务。",
+          "继续工作流": "将workflow_control设为running，从阶段状态记录的current_stage继续。",
+          "切换视频引擎": "更换项目视频引擎 / H3 接口档位 / grok 或 seedance 型号。导演可用短号（如『换成1B』『换成2』）或口语描述指定；助手按 engine_alias_map 解析、复述当前值与解析结果、列出 engine_switch_rule.impact_list 全部影响项，等导演明确确认后才更新运行配置对应字段并把 advance 记录写入 mode_history。"
+        },
+        "update_process": [
+          "读取13-工作流文档/运行配置.json。",
+          "验证用户控制指令。",
+          "更新advance_mode或workflow_control。",
+          "追加mode_history记录，不覆盖历史记录。",
+          "同步更新13-工作流文档/阶段状态.json中的推进模式和next_action。",
+          "6) 若控制指令涉及更换视频引擎/档位/型号：按 engine_alias_map 解析导演表述（短号或口语），先复述运行配置当前值与解析结果，再完整列出 engine_switch_rule.impact_list 影响清单，等导演明确确认后才更新 video_engine / h3_interface_tier / grok_video_model / seedance_model 并追加 mode_history（note=中途更换，原值→新值）；受影响阶段记 needs_revision 并写明 invalidated_by=引擎变更。"
+        ],
+        "config_schema": {
+          "advance_mode": "auto|manual|album_semiauto（auto=全程自动；manual=逐阶段手动确认；album_semiauto=图册半自动：stage1至stage6.6自动推进，stage6.6图册交付后暂停等待用户确认图册无问题，放行后继续stage7与stage8）（图册审阅闸门实体定义见 stage_workflow(7).album_review_gate）。启动提问时选项以中文展示（自动 / 手动 / 图册半自动），写入运行配置的值恒为 auto | manual | album_semiauto",
+          "project_style": "string（启动时用户选择，写入05-风格项目风格配置）",
+          "project_resolution": "H3项目（按 h3_interface_tier 分档）：standard_4 → 768p竖/1080p竖/768p横/1080p横 四选一；high_8 → 768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 六选一（取值必须带 (宽*高) 后缀）；wan3.0项目：720p竖|1080p竖|720p横|1080p横；grok项目：16:9|9:16（grok仅720P，该项为画幅比例，quality固定720p）；seedance项目：{aspect}·{resolution}，其中aspect∈{16:9,9:16}、resolution∈{480P,720P,1080P}（写入来源：H3←h3_interface_tier + h3_resolution、wan3.0←wan30_resolution、grok←grok_resolution、seedance←seedance_aspect+seedance_resolution 合成；每项均须实际提问后写入，禁止凭记忆填入）（启动时按video_engine与h3_interface_tier锁定，stage7读取并按引擎与档位映射写入视频提示词与请求参数）",
+          "workflow_control": "running|paused",
+          "mode_changed_at": "ISO 8601 datetime",
+          "mode_changed_from": "auto|manual|album_semiauto|null",
+          "mode_changed_by": "user",
+          "mode_history": [],
+          "video_engine": "H3|wan3.0|grok|seedance（启动第一问四选一锁定，默认H3；决定project_resolution可选组并路由stage7视频接口）",
+          "grok_video_model": "grok|grok1.5（仅 video_engine=grok 时必填并写入运行配置；grok→接口模型 grok-video，grok1.5→接口模型 grok-video-1.5；非grok项目该字段不写、stage7不读取）",
+          "seedance_model": "seedance2.0|seedance2.5（仅 video_engine=seedance 时必填；seedance2.0→接口模型 doubao-seedance-2-0-260128、seedance2.5→接口模型 doubao-seedance-2-5-260628；非seedance项目该字段不写、stage7不读取）",
+          "seedance_aspect": "16:9|9:16（仅 video_engine=seedance 时必填；映射为请求体 ratio）",
+          "seedance_resolution": "480P|720P|1080P（仅 video_engine=seedance 时必填；映射为请求体 resolution 的小写形式 480p/720p/1080p）",
+          "h3_interface_tier": "standard_4 | high_8（仅 video_engine=H3 时写入；决定 stage7 请求端点与 h3_resolution 选项组；standard_4=4分低价接口 minimax_h3_image_audio_to_video_v2，high_8=8分高质量接口 minimax_h3_z0903）。启动提问时选项以中文展示（4分低价档 / 8分高质量档），写入运行配置的值恒为 standard_4 | high_8"
+        },
+        "rules": [
+          "模式切换只影响切换后的推进动作，不重做已通过阶段。",
+          "当前正在执行的阶段允许完成。",
+          "已提交并被API受理的任务不因模式切换或暂停而取消。"
+        ],
+        "strict_character_binding": true,
+        "strict_character_binding_description": "默认开启。人物 asset_id、角色身份、参考图URL、Subject/ref_image 任一校验不通过，立即阻断对应任务，不允许降级为纯文本生成。",
+        "engine_alias_map": {
+          "purpose": "导演指定视频引擎/档位/型号时使用的固定短号表与口语反查表。导演报短号或口语描述即视为明确指定：助手必须按本表解析出对应的内部取值（video_engine / h3_interface_tier / grok_video_model / seedance_model），复述确认后写入运行配置；不得以『名字描述不清』为由反复追问，也不得自行挑一个代替。",
+          "video_engine": {
+            "1": {
+              "value": "H3",
+              "label": "H3（AutoDL MiniMax-H3，多图多音频多参，有声线参考、画面内角色强制对口型）"
+            },
+            "2": {
+              "value": "wan3.0",
+              "label": "万相3.0（通义万相，单张分镜图驱动，最简最省）"
+            },
+            "3": {
+              "value": "grok",
+              "label": "grok（多米API，只有 720P，按秒计费）"
+            },
+            "4": {
+              "value": "seedance",
+              "label": "seedance（火山方舟，多模态参考最多50个）"
+            }
+          },
+          "h3_interface_tier": {
+            "A": {
+              "value": "standard_4",
+              "label": "4分低价档（原接口 minimax_h3_image_audio_to_video_v2，便宜、质量一般）"
+            },
+            "B": {
+              "value": "high_8",
+              "label": "8分高质量档（新接口 minimax_h3_z0903，贵、质量高，分辨率六档）"
+            }
+          },
+          "grok_video_model": {
+            "1": {
+              "value": "grok",
+              "label": "grok-video（基础版）"
+            },
+            "2": {
+              "value": "grok1.5",
+              "label": "grok-video-1.5（1.5版）"
+            }
+          },
+          "seedance_model": {
+            "1": {
+              "value": "seedance2.0",
+              "label": "Seedance 2.0（模型 doubao-seedance-2-0-260128；单镜 4-15 秒）"
+            },
+            "2": {
+              "value": "seedance2.5",
+              "label": "Seedance 2.5（模型 doubao-seedance-2-5-260628；镜头组 4-30 秒，最多50个参考素材）"
+            }
+          },
+          "how_to_read": "短号可组合：报『1B』= 视频引擎 H3 的 8分高质量档；报『2』= 万相3.0；报『4-2』= seedance 2.5；报『3-1』= grok 的 grok-video。只说引擎短号（如『换成1』）时，引擎已明确，但该引擎专属的档位/型号仍需按启动条件追问规则补问（H3→档位、grok→型号、seedance→型号→画幅→清晰度）。",
+          "spoken_lookup": [
+            "想省钱、出得快 → 1A（H3 4分低价档）或 2（万相3.0）",
+            "要画面质量最好 → 1B（H3 8分高质量档）",
+            "要角色说话嘴型准、声线锁得住 → 1（H3，带声线参考与对口型）",
+            "要一条长镜头（十几秒以上） → 4-2（seedance 2.5，镜头组最长 30 秒）",
+            "只要一图一镜、不想搞多参 → 2（万相3.0 单图驱动）",
+            "只要 720P、按秒算钱 → 3（grok）"
+          ],
+          "display_rule": "向导演复述解析结果时用『短号 + 中文标签 + 内部取值』三段式，例如：『1B = H3 的 8分高质量档（high_8）』。"
+        },
+        "engine_switch_rule": {
+          "command": "支持导演在项目进行中更换视频引擎 / H3 接口档位 / grok 或 seedance 型号。更换指令可用短号（见 engine_alias_map）或用口语描述，两者等效。",
+          "must_confirm": "更换前必须四步做完、缺一不可：① 读 13-工作流文档/运行配置.json，向导演复述置换前的当前值；② 按 engine_alias_map 解析导演表述并复述『短号 + 中文标签 + 内部取值』；③ 完整列出本规则 impact_list 的全部影响项（不得省略、不得只挑好听的讲）；④ 等导演明确确认后，才可写入运行配置并追加 mode_history（field=video_engine / h3_interface_tier / grok_video_model / seedance_model，note 写明『中途更换，原值 X → 新值 Y』）。禁止未确认即写入，禁止替导演决定换哪个。",
+          "impact_list": [
+            "分镜口径（stage4）：三套分镜技能互斥，口径随引擎变化——H3 单镜按接口档位放开（high_8 为 1-15 秒、standard_4 为 1-10 秒，v1.24.5）；通用引擎（wan3.0/grok/seedance2.0）单镜下限 4 秒；seedance2.5 以镜头组为单位。已定稿分镜若与新引擎口径不符，必须回 stage4 按新引擎重做或做正式合规复核，不得直接拿去出视频。",
+            "视频提示词（stage7）：三套提示词技能互斥、禁止跨引擎复用。H3 用官方结构化提示词（Ref2VA 六段 / T2VA 三字段），其它引擎用『分镜原文 + 多参』。已定稿提示词必须按新引擎全部重出。",
+            "已生成视频：换引擎后旧视频不符合新引擎口径，需按 stage7 重新生成；旧版本保留不覆盖。",
+            "资产与分镜图（stage5 / stage6）：与引擎无关，通常可复用；但 stage4 若改动，受影响镜的分镜图需按 stage6 重新生成。",
+            "分辨率 / 画幅（project_resolution）：必须按新引擎重新提问并改写——H3 由 h3_interface_tier 决定选项组、wan3.0 用四档、grok 用 16:9/9:16、seedance 用画幅+清晰度合成。禁止沿用旧引擎的取值（如 H3 项目的 768p横 直接搬到 wan3.0 项目）。",
+            "接口与密钥：按新引擎读对应 api/*.json 与 ../config/ 下的配置文件；新引擎若未做过端到端 live test，须先按 live_test_rule 验证通过再整批提交。",
+            "阶段状态：更换引擎时把受影响阶段记 needs_revision 并写明 invalidated_by=引擎变更（video_engine 由 X 改为 Y），并按 global_rules.no_skip 从受影响的最上游阶段重新走一遍，不得跳阶段。"
+          ],
+          "forbidden": [
+            "未向导演复述当前值与解析结果就直接改运行配置",
+            "以『我按以往经验替你选了』代替确认",
+            "只讲更换的好处、不讲分镜与提示词必须重做等代价",
+            "把新引擎的分辨率/画幅取值直接沿用旧引擎的"
+          ]
+        }
+      }
+    },
+    "gate_enforcement": {
+      "desc": "闸门总则：脚本位置、产物、覆盖口径、证据要求、阈值来源、严重级、交互闸门、无闸门阶段规则。本环节用哪些闸门见骨架 gates / gate_refs。",
+      "content": {
+        "purpose": "把每个阶段的 self_checks 从『自然语言清单』变成『可执行闸门』，根治『自检通过但实际违规』。",
+        "script_location": "11-工作流脚本/workflow_gates/{gate_file}　——　gate_file 由 gate_enforcement.stage_gate_map 按 stage_id 查得；该阶段无专项闸门时 stage_gate_map 的值为 null，按 no_gate_stage_rule 第 ② 档执行。禁止再用『{stage_id}_gate.py』这类模板名直接拼路径（历史文件名与 stage_id 并不一致）。",
+        "outputs": {
+          "machine": "12-质检/{stage_id}_闸门结果_v{version}.json",
+          "human": "12-质检/{stage_id}_闸门汇总_v{version}.md"
+        },
+        "coverage_rule": "闸门必须穷尽该阶段 self_checks 的全部条目，逐条映射为一条 check，status 仅取 PASS|FAIL|WARNING|SKIPPED。可机器断言项（带数字、枚举、字段存在性、格式正则、跨表一致性的）必须实现为代码断言；不可机器断言的语义项（表演、情绪、轴线、微表情等）必须实现为逐条人工勾选清单并要求回填 evidence，不得直接省略、不得合并成一条模糊结论。自检结果必须写出 workflow_selfcheck_total、implemented_checks、manual_checks，且满足 implemented_checks + manual_checks = workflow_selfcheck_total；不满足时该次自检无效，overall_status 强制为 FAIL。",
+        "producer_rule": "该阶段自检结果只能由 gate_enforcement.script_location 指定的闸门脚本产出；禁止人工撰写、人工修改或事后补写。（**例外**：stage_gate_map 中值为 null 的阶段不适用本条，按 no_gate_stage_rule 第 ② 档执行。）",
+        "interactive_gate_rule": "纯交互闸门阶段（判定对象是『用户答复』而非生成产物的阶段；当前为 stage_8_revision_confirmation_and_redo，判定依据：stage_index 中 skill_source=null 且该阶段无生成产物）不整体适用 producer_rule『自检结果只能由闸门脚本产出』的通用口径，改按本条执行：① 该类阶段仍必须提供可执行闸门脚本（随组合包 gates/ 分发、项目内按 script_location 落地），脚本职责是校验『问答答复落盘文件』的结构完整性——逐问校验 question_id 齐全、answer 非空、answer_source=user、answered_at 为合法时间戳、未触发的问项已标 answer_status=not_triggered 并注明原因，并产出与其它阶段同名的 12-质检/{stage_id}_闸门结果_v{version}.json 与 12-质检/{stage_id}_闸门汇总_v{version}.md；② 涉及用户答复的 self_check，其 evidence 必须指向该阶段落盘文件的具体字段路径（如 stage8_decision.need_revision.answer），未落盘或未回填 evidence 的自检条目无效；③ 该类阶段的落盘文件是权威证据源，禁止人工事后补写、禁止用 default 值顶替、禁止以『用户未回复即视为无修改』收尾；④ 未通过该类阶段闸门，禁止标记 passed/completed，禁止越过该阶段，**禁止把该类阶段折叠为『无产物，直接完成』**——该类阶段的有序产出就是问答答复落盘文件本身。该类阶段清单由 stage_index 推导（skill_source=null 且无生成产物），不单独维护名单。",
+        "pre_write_gate": "闸门必须先于阶段产物写入正式目录执行。**闸门允许在草稿区对尚未落盘的产物执行**——调用闸门时须用其显式路径入参指定草稿产物（如 stage4 闸门的 --storyboard、cast_frame 闸门的 --shots 支持传入文件或目录路径），产物仅在闸门无 blocking FAIL 后才允许复制/写入正式目录。存在 blocking FAIL 时：禁止写入正式目录、禁止标记 passed、禁止进入下一阶段。（本条自 v1.24.1 起明确草稿区执行口径，用于解开『闸门只能读正式目录、而规则又禁止先写正式目录』的死锁。）",
+        "evidence_rule": "每条 check 必须包含 workflow_rule（本文件内对应条目位置，如 stage_workflow(索引从0起).self_checks(索引)）与 evidence（项目相对路径或源位置）；缺任一字段该条 check 无效。",
+        "threshold_source_rule": "闸门内所有阈值、枚举与标准名必须取自本文件并逐字一致；禁止硬编码凭记忆的名单（例如运镜标准名必须取自 standard_camera_movement_system，机位标准名必须取自 standard_camera_position_system，比对前先做空白归一）。",
+        "self_test_rule": "闸门首次运行出现大面积 FAIL 时，必须先用本文件核验闸门自身的阈值与枚举是否正确，排除闸门误报后再判定产物违规；确认是闸门误报时必须修正闸门并复跑，禁止带着误报下定论，也禁止为消除误报而放宽断言。",
+        "severity_policy": {
+          "P0": "阻断项，必须清零才可通过",
+          "P1": "记 FAIL，需评估或返修",
+          "WARNING": "仅记录不阻断；仅限本文件已登记导演豁免先例的情形（如单集/短片总时长超出运行配置 target_duration_seconds ±15 秒容差且已有导演授权）"
+        },
+        "stage_gate_map": {
+          "stage_1_installation_initialization": null,
+          "stage_2_directory_and_naming": null,
+          "stage_3_script_generation": null,
+          "stage_4_storyboard_generation": "stage_4_storyboard_generation_gate.py",
+          "stage_5_asset_prompt_and_asset_generation": "stage_5_asset_generation_gate.py",
+          "stage_6_storyboard_image_prompt_and_image_generation": "stage_6_image_binding_gate.py",
+          "stage_6_5_public_asset_url_handoff": null,
+          "stage_6_6_storyboard_album_generation": null,
+          "stage_7_video_prompt_h3_generation_and_download": null,
+          "stage_8_revision_confirmation_and_redo": "stage_8_interaction_gate.py"
+        },
+        "no_gate_stage_rule": "【闸门分档口径·v1.24.1 立】闸门体系按『该阶段有无专项闸门』分两档执行，消除『无闸门阶段无法合规自检』的死结：①**有专项闸门的阶段**（stage_gate_map 的值非 null：stage_4 / stage_5 / stage_6 / stage_8）——自检结果**只能**由该闸门脚本产出，禁止人工撰写、人工修改或事后补写（沿用 producer_rule 原口径）。②**无专项闸门的阶段**（stage_gate_map 的值为 null：stage_1 / stage_2 / stage_3 / stage_6_5 / stage_6_6 / stage_7）——该阶段**不设强制闸门**，自检按本阶段 self_checks 逐条执行，每条回填 workflow_rule 与 evidence，结果写入与其它阶段同名的 12-质检/{stage_id}_闸门结果_v{version}.json 与 _闸门汇总_v{version}.md（结构遵循 self_check_protocol.machine_schema）；该阶段无生成产物、或所需输入尚未产生时，对应条目记 SKIPPED/WARNING 并注明原因，**禁止以『本阶段无闸门』为由跳过自检或省略结果文件**。③**stage_7 叠加要求**：stage_7 的 74 条 self_checks 除按第 ② 档执行外，还必须串联执行四道已分发闸门并以其结论为准——h3_video_prompt_format_gate（仅 video_engine=H3）、asset_download_atomicity_gate、pipeline_scene_face_consistency_gate、video_prompt_ref_composition_gate；三者任一 FAIL 即 stage_7 不得标记 passed。④本档划分以 stage_gate_map 为唯一权威；中途给某阶段补上闸门脚本时，必须同步把 stage_gate_map 对应值由 null 改成文件名，否则仍按第 ② 档执行。",
+        "ai_reading_rule": "【AI 自检读取口径（v1.24.16）】闸门产出的『闸门结果 JSON』是**机器判定源与归档留档**，体量大（stage4 一次约 43 KB / 约 2 万字符）；**AI 自检时不读该 JSON**，一律读取闸门的 stdout 与 `*_闸门汇总_*.md`。stage4 分镜闸门支持 `--summary` 精简模式（md 由约 11 KB 降至约 3.7 KB、只列 FAIL 项；stdout 同步精简），**JSON 结果文件在两种模式下逐字节一致**。AI 的职责固定为：**跑闸门 → 读「判定 + FAIL 清单 + 修复指引」→ 只返修 FAIL 项**；PASS 项与逐条明细无需通读。需要逐条溯源时由人在归档 JSON 中查阅。",
+        "manual_check_nature_rule": "【manual 项性质（v1.24.16 实测核实）】`check.manual_check=true` 的条目为**不可机器断言的语义占位项**（表演 / 情绪 / 轴线 / 微表情 / 流程合规等）。实测其在『合规分镜卡』与『违规分镜卡』两个截然不同的输入下，status 与 actual **逐字相同** —— 即**不读取任何输入、恒为 PASS 占位**，本身不构成任何产出保证。故：①AI **不必逐一处理或复述**这些条目（现在处理它们也只是转述一句固定文本）；②它们的定位是**导演抽检清单**（全量明细见归档 JSON）；③**真正约束产出的只有 `manual_check=false` 的机检项**——那才是必须全绿的部分。"
+      }
+    }
+  },
+  "refs": {
+    "skills": {
+      "dir": "skills/",
+      "entries": [
+        {
+          "id": "embedded_skills.video_prompt_skill_router",
+          "file": "skills/video_prompt_router.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.video_prompt_skill_generic",
+          "file": "skills/video_prompt_generic.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.video_prompt_skill_seedance25",
+          "file": "skills/video_prompt_seedance25.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.storyboard_skill_router",
+          "file": "skills/storyboard_router.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.storyboard_skill_general",
+          "file": "skills/storyboard_general.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.storyboard_skill_seedance25",
+          "file": "skills/storyboard_seedance25.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.script_skill",
+          "file": "skills/script_skill.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.storyboard_skill",
+          "file": "skills/storyboard_h3.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.image_prompt_skill",
+          "file": "skills/image_prompt_skill.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.video_generation_extension",
+          "file": "skills/video_prompt_h3.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        },
+        {
+          "id": "embedded_skills.detail_hook_emotion_map",
+          "file": "skills/detail_hook_emotion_map.md",
+          "load_when": "执行引用该技能的阶段时按需加载"
+        }
+      ]
+    },
+    "api": {
+      "dir": "api/",
+      "entries": {
+        "image_api": {
+          "file": "api/image_api.json",
+          "credential_file": "../config/xem8k5_gpt_image_config.json"
+        },
+        "video_api": {
+          "file": "api/video_api_h3.json",
+          "credential_file": "../config/minimax_h3_config.json"
+        },
+        "video_api_wan3_0": {
+          "file": "api/video_api_wan3_0.json",
+          "credential_file": "../config/wan_video_config.json"
+        },
+        "video_api_grok": {
+          "file": "api/video_api_grok.json",
+          "credential_file": "../config/duomi_grok_video_config.json"
+        },
+        "video_api_seedance": {
+          "file": "api/video_api_seedance.json",
+          "credential_file": "../config/seedance_video_config.json"
+        },
+        "policies": {
+          "file": "api/policies.json",
+          "credential_file": null
+        },
+        "music_api": {
+          "file": "api/music_api.json",
+          "credential_file": "../config/mxapi_music_config.json"
+        },
+        "cos_imgbed": {
+          "file": "api/cos_imgbed_api.json",
+          "credential_file": "../config/cos_config.json"
+        }
+      }
+    },
+    "standards": {
+      "dir": "standards/",
+      "entries": [
+        {
+          "id": "standards.shot_group_definition",
+          "file": "standards/shot_group_definition.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.core_basics.shot_group_definition"
+        },
+        {
+          "id": "standards.shot_scale_standard",
+          "file": "standards/shot_scale_standard.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.core_basics.shot_scale_standard"
+        },
+        {
+          "id": "standards.scene_character_roster_policy",
+          "file": "standards/scene_character_roster_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.core_basics.scene_character_roster_policy"
+        },
+        {
+          "id": "standards.character_sub_form_policy",
+          "file": "standards/character_sub_form_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.character_sub_form_policy"
+        },
+        {
+          "id": "standards.shot_group_types",
+          "file": "standards/shot_group_types.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.standard_shot_group_types"
+        },
+        {
+          "id": "standards.storyboard_specification",
+          "file": "standards/storyboard_specification.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.storyboard_specification"
+        },
+        {
+          "id": "standards.creation_taboo_rules",
+          "file": "standards/creation_taboo_rules.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.creation_taboo_rules"
+        },
+        {
+          "id": "standards.camera_movement_system",
+          "file": "standards/camera_movement_system.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.standard_camera_movement_system"
+        },
+        {
+          "id": "standards.camera_position_system",
+          "file": "standards/camera_position_system.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.standard_camera_position_system"
+        },
+        {
+          "id": "standards.continuity_policy",
+          "file": "standards/continuity_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.continuity_policy"
+        },
+        {
+          "id": "standards.crowd_scene_focus_rule",
+          "file": "standards/crowd_scene_focus_rule.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.crowd_scene_focus_rule"
+        },
+        {
+          "id": "standards.scene_blocking_policy",
+          "file": "standards/scene_blocking_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.scene_blocking_policy"
+        },
+        {
+          "id": "standards.shot_reverse_shot_scene_face_policy",
+          "file": "standards/shot_reverse_shot_scene_face_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.shot_reverse_shot_scene_face_policy"
+        },
+        {
+          "id": "standards.micro_expression_module",
+          "file": "standards/micro_expression_module.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.micro_expression_module"
+        },
+        {
+          "id": "standards.eye_line_and_gaze_policy",
+          "file": "standards/eye_line_and_gaze_policy.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.eye_line_and_gaze_policy"
+        },
+        {
+          "id": "standards.storyboard_execution_framework",
+          "file": "standards/storyboard_execution_framework.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.execution_framework"
+        },
+        {
+          "id": "standards.transition_shot_system",
+          "file": "standards/transition_shot_system.json",
+          "json_path": "payload",
+          "source_pointer": "embedded_skills.storyboard_skill.transition_shot_system"
+        }
+      ]
+    },
+    "note": "只给位置与用途；正文不内联，用到才按单源规则读对应文件。"
+  },
+  "by_stage": {
+    "local_execution_environment": "全部环节都要（本机跑命令就会踩坑），读到过一次即可",
+    "project_layout": "全部环节都要（写文件必须对照目录与命名）",
+    "runtime_control": "S1 必读；S3 读 video_engine/seedance_model；S7 读 video_engine 与对应引擎参数；其余环节按需",
+    "gate_enforcement": "全部环节都要（哪些闸门在骨架 gates 字段）",
+    "refs": "S1 读一次建索引认知；之后用到具体技能/接口时直接按路径读"
+  }
+}

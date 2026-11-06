@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 197,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L56 纸片立体书",
+    "en": "L56 纸片立体书"
+  },
+  "summary": {
+    "zh-CN": "立体书在书桌上打开，小精灵 Pip 在纸片世界冒险，最后跳出书外。",
+    "en": "立体书在书桌上打开，小精灵 Pip 在纸片世界冒险，最后跳出书外。"
+  },
+  "details": {
+    "zh-CN": "适合：翻书讲故事\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：翻书讲故事\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

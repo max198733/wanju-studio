@@ -1,0 +1,259 @@
+{
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "purpose": "规则条目 → 文件 + JSON 路径。闸门自检填 workflow_rule 时查本索引。",
+  "entries": [
+    {
+      "id": "core.redline",
+      "file": "core/00-core.json",
+      "json_path": "sections"
+    },
+    {
+      "id": "core.support",
+      "file": "core/01-support.json",
+      "json_path": "sections"
+    },
+    {
+      "id": "contracts",
+      "file": "core/02-contracts.json",
+      "json_path": "chain"
+    },
+    {
+      "id": "S1",
+      "name": "立项与运行配置",
+      "file": "stages/S1-立项与运行配置.json",
+      "stage_numbers": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "S1.self_checks",
+      "file": "stages/S1-立项与运行配置.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S2",
+      "name": "剧本",
+      "file": "stages/S2-剧本.json",
+      "stage_numbers": [
+        3
+      ]
+    },
+    {
+      "id": "S2.self_checks",
+      "file": "stages/S2-剧本.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S3",
+      "name": "分镜拆解",
+      "file": "stages/S3-分镜拆解.json",
+      "stage_numbers": [
+        4
+      ]
+    },
+    {
+      "id": "S3.3a",
+      "name": "建组期",
+      "file": "stages/S3-分镜拆解.json",
+      "json_path": "phases[phase_id=3a].rules"
+    },
+    {
+      "id": "S3.3b",
+      "name": "填卡期",
+      "file": "stages/S3-分镜拆解.json",
+      "json_path": "phases[phase_id=3b].rules"
+    },
+    {
+      "id": "S3.3c",
+      "name": "校验期",
+      "file": "stages/S3-分镜拆解.json",
+      "json_path": "phases[phase_id=3c].rules"
+    },
+    {
+      "id": "S3.self_checks",
+      "file": "stages/S3-分镜拆解.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S4",
+      "name": "资产与声音",
+      "file": "stages/S4-资产与声音.json",
+      "stage_numbers": [
+        5
+      ]
+    },
+    {
+      "id": "S4.self_checks",
+      "file": "stages/S4-资产与声音.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S5",
+      "name": "分镜图",
+      "file": "stages/S5-分镜图.json",
+      "stage_numbers": [
+        6
+      ]
+    },
+    {
+      "id": "S5.self_checks",
+      "file": "stages/S5-分镜图.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S6",
+      "name": "图册与COS上传",
+      "file": "stages/S6-图册与COS上传.json",
+      "stage_numbers": [
+        6.5,
+        6.6
+      ]
+    },
+    {
+      "id": "S6.self_checks",
+      "file": "stages/S6-图册与COS上传.json",
+      "json_path": "self_checks"
+    },
+    {
+      "id": "S7",
+      "name": "出视频",
+      "file": "stages/S7-出视频.json",
+      "stage_numbers": [
+        7
+      ]
+    },
+    {
+      "id": "S7.7a",
+      "name": "提示词生成期",
+      "file": "stages/S7-出视频.json",
+      "json_path": "phases[phase_id=7a].rules"
+    },
+    {
+      "id": "S7.7b",
+      "name": "提交前闸门",
+      "file": "stages/S7-出视频.json",
+      "json_path": "phases[phase_id=7b].rules"
+    },
+    {
+      "id": "S7.7c",
+      "name": "提交与出片期",
+      "file": "stages/S7-出视频.json",
+      "json_path": "phases[phase_id=7c].rules"
+    },
+    {
+      "id": "S7.7d",
+      "name": "收尾交付",
+      "file": "stages/S7-出视频.json",
+      "json_path": "phases[phase_id=7d].rules"
+    },
+    {
+      "id": "S7.self_checks",
+      "file": "stages/S7-出视频.json",
+      "json_path": "self_checks"
+    }
+  ],
+  "excluded_stages": {
+    "stage_8_revision_confirmation_and_redo": "导演决定砍掉返工环节，未纳入任何环节"
+  },
+  "excluded_core_sections": {
+    "startup_interaction": "归 S1",
+    "version_note": "历史叙述，不进程",
+    "version_history_ref": "历史叙述，不进程"
+  },
+  "original_stage_map": [
+    {
+      "stage_number": 1,
+      "stage_id": "stage_1_installation_initialization",
+      "name": "安装初始化",
+      "skeleton": "S1",
+      "file": "stages/S1-立项与运行配置.json",
+      "location": "stages[0]",
+      "self_checks_count": 13,
+      "skill_source": null
+    },
+    {
+      "stage_number": 2,
+      "stage_id": "stage_2_directory_and_naming",
+      "name": "目录与命名规则",
+      "skeleton": "S1",
+      "file": "stages/S1-立项与运行配置.json",
+      "location": "stages[1]",
+      "self_checks_count": 4,
+      "skill_source": null
+    },
+    {
+      "stage_number": 3,
+      "stage_id": "stage_3_script_generation",
+      "name": "剧本生成",
+      "skeleton": "S2",
+      "file": "stages/S2-剧本.json",
+      "location": "stages[0]",
+      "self_checks_count": 6,
+      "skill_source": "embedded_skills.script_skill"
+    },
+    {
+      "stage_number": 4,
+      "stage_id": "stage_4_storyboard_generation",
+      "name": "分镜拆解与总时长计算",
+      "skeleton": "S3",
+      "file": "stages/S3-分镜拆解.json",
+      "location": "phases[3a,3b,3c]",
+      "self_checks_count": 104,
+      "skill_source": "embedded_skills.storyboard_skill_router（按 video_engine / seedance_model 路由到唯一一套分镜技能：H3→storyboard_skill；seedance2.5→storyboard_skill_seedance25；其余→storyboard_skill_general）"
+    },
+    {
+      "stage_number": 5,
+      "stage_id": "stage_5_asset_prompt_and_asset_generation",
+      "name": "资产提取、生图提示词、资产图片生成与声音圣经资产生成",
+      "skeleton": "S4",
+      "file": "stages/S4-资产与声音.json",
+      "location": "stages[0]",
+      "self_checks_count": 28,
+      "skill_source": "embedded_skills.image_prompt_skill"
+    },
+    {
+      "stage_number": 6,
+      "stage_id": "stage_6_storyboard_image_prompt_and_image_generation",
+      "name": "分镜图提示词与分镜图生成",
+      "skeleton": "S5",
+      "file": "stages/S5-分镜图.json",
+      "location": "stages[0]",
+      "self_checks_count": 41,
+      "skill_source": "embedded_skills.image_prompt_skill"
+    },
+    {
+      "stage_number": "6.5",
+      "stage_id": "stage_6_5_public_asset_url_handoff",
+      "name": "公网素材URL托管与交接",
+      "skeleton": "S6",
+      "file": "stages/S6-图册与COS上传.json",
+      "location": "stages[0]",
+      "self_checks_count": 14,
+      "skill_source": null
+    },
+    {
+      "stage_number": "6.6",
+      "stage_id": "stage_6_6_storyboard_album_generation",
+      "name": "分镜图册生成",
+      "skeleton": "S6",
+      "file": "stages/S6-图册与COS上传.json",
+      "location": "stages[1]",
+      "self_checks_count": 9,
+      "skill_source": null
+    },
+    {
+      "stage_number": 7,
+      "stage_id": "stage_7_video_prompt_h3_generation_and_download",
+      "name": "视频提示词、H3生成与下载",
+      "skeleton": "S7",
+      "file": "stages/S7-出视频.json",
+      "location": "phases[7a,7b,7c,7d]",
+      "self_checks_count": 81,
+      "skill_source": "embedded_skills.video_prompt_skill_router（按 video_engine / seedance_model 路由到唯一一套视频提示词技能：H3→video_generation_extension（h3-prompt-writing）；seedance2.5→video_prompt_skill_seedance25；其余→video_prompt_skill_generic）"
+    }
+  ],
+  "original_stage_map_note": "原 stage_index 的 body_pointer 已随结构失效，此表给每段正文的新落点与技能路由来源；stage_8 按导演决定整体排除。"
+}

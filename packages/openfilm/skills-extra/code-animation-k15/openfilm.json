@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 91,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K15 橡皮管 1930",
+    "en": "K15 橡皮管 1930"
+  },
+  "summary": {
+    "zh-CN": "手脚像橡皮管，饼形眼睛，黑白或旧色",
+    "en": "手脚像橡皮管，饼形眼睛，黑白或旧色"
+  },
+  "details": {
+    "zh-CN": "适合：复古、好玩\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：复古、好玩\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

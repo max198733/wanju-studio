@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="玩剧桌面客户端下载、云项目与使用教程。">
+  <title>玩剧 · 下载与教程</title>
+  <link rel="icon" href="/wanju.png"><link rel="stylesheet" href="/download.css">
+  <script src="/download.js" defer></script>
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <a class="brand" href="/" aria-label="玩剧首页"><img src="/wanju.png" width="42" height="42" alt=""><span>玩剧<span class="brand-caption">WANJU STUDIO</span></span></a>
+    <nav aria-label="主导航"><a href="/register">账号中心</a><a href="#downloads">软件下载</a><a href="#tutorials">使用教程</a><a href="/admin">管理后台</a></nav>
+  </div></header>
+  <main class="content">
+    <section class="intro">
+      <p class="eyebrow">下载中心 <span class="tag">Windows 桌面版</span></p>
+      <h1>玩剧桌面端</h1>
+      <p class="lead">说出想做的内容，和创作助手一起完成剧本、分镜与剪辑。</p>
+      <div class="release-notice"><strong>一个玩剧账号，继续每一份作品。</strong>登录后使用已开通的创作助手，默认基础档，无需填写模型密钥。云端助手按实际用量扣玩剧点，账单可查；本地剪辑与导出可直接使用。</div>
+    </section>
+    <section id="downloads" class="section">
+      <div class="section-title"><h2>软件下载</h2><span>Windows 10 / 11 · 64 位</span></div>
+      <article class="download-item student">
+        <div class="item-heading"><span class="audience">统一创作客户端</span><span class="version" id="desktop-version">读取中</span></div>
+        <h3>玩剧</h3>
+        <p>对话改片、预览、时间线剪辑与导出都在一个工作台完成。项目保存在本机，也可登录后保存云版本，在另一台电脑继续。</p>
+        <a id="desktop-download" class="button primary" aria-disabled="true">正在读取下载信息</a>
+        <p class="file-meta" id="desktop-meta">正在读取文件信息</p>
+        <a class="text-link" href="/student-guide">查看安装与使用教程 →</a>
+        <details class="checksum"><summary>SHA-256 校验值</summary><code id="desktop-sha">请稍候</code></details>
+      </article>
+      <p class="note">安装包尚未做 Windows 代码签名。请核对下载来源和 SHA-256，遵守电脑管理者的安装要求，不要关闭安全软件。新版本运行前请先保存并结束旧版本中的创作；旧工程无需删除。</p>
+      <p class="manifest-status" id="manifest-status" role="status"></p>
+    </section>
+    <section id="tutorials" class="section">
+      <div class="section-title"><h2>操作教程</h2><span>在线阅读或下载 PDF</span></div>
+      <div class="tutorial-row"><div><h3>创作者：安装、创作与保存作品</h3><p>注册登录、充值、选择创作档位和换电脑继续。</p></div><div class="row-actions"><a href="/student-guide">在线阅读</a><a href="/releases/Wanju-Student-Guide.pdf" download>下载 PDF</a></div></div>
+      <div class="tutorial-row"><div><h3>管理员：默认服务、配额与服务费</h3><p>维护供应商模板，为账号分配密钥，管理存储和账单。</p></div><div class="row-actions"><a href="/teacher-guide">在线阅读</a><a href="/releases/Wanju-Teacher-Guide.pdf" download>下载 PDF</a></div></div>
+    </section>
+    <section class="section faq">
+      <h2>常见问题</h2>
+      <details><summary>首次使用需要填写模型密钥吗？</summary><p>使用已开通的玩剧创作助手不需要。创建账号并登录即可使用默认基础档。创作按实际用量自动扣除玩剧点，余额不足时不会发起请求；可在账户页查看余额和账单。其他档位开放后，点选即切换。</p></details>
+      <details><summary>作品会自动上传吗？</summary><p>当前需要在“账户与权益 → 云项目”中选择本地项目并点击“保存到云端”。看到云版本保存成功后，才能在另一台电脑登录并下载打开。未同步的本地修改不会自动出现在云端。</p></details>
+      <details><summary>创作费用怎么扣？</summary><p>玩剧创作助手按当前档位的公开价格和实际模型用量自动扣点。每次请求先预留，完成后退回多余点数；一次制作可能包含多次请求。选择档位时可查看输入、输出和缓存价格；默认基础档，切换后立即生效。点数不足会在请求前提示充值。结果不明的请求会暂留待核对，不会自动重发或升级收费。100 玩剧点对应 ¥1.00，充值通过充值码完成。自有供应商服务另按供应商规则计费。</p></details>
+      <details><summary>可以在浏览器里完整创作吗？</summary><p>本次提供 Windows 桌面端，网站用于下载、账号和管理后台。云项目可以跨电脑恢复，但不等于已上线完整的多用户网页剪辑器。</p></details>
+      <details><summary>安装或连接失败怎么办？</summary><p>先检查官网能否打开。下载支持断点续传；安装异常请提供版本和错误截图。不要公开发送 API 密钥、登录密码或后台口令。</p></details>
+    </section>
+  </main>
+  <footer class="site-footer"><div><span>玩剧 · 创作与剪辑</span><span>wanju.kukukaka.cn</span></div></footer>
+</body></html>

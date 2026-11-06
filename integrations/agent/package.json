@@ -1,0 +1,16 @@
+{
+  "name": "wanju-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Conversation-driven local film tools for Wanju Studio",
+  "scripts": {
+    "test": "node --test client.test.mjs guide.test.mjs mcp.test.mjs",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
+  }
+}

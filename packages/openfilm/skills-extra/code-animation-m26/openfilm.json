@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 62,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M26 M26",
+    "en": "M26 M26"
+  },
+  "summary": {
+    "zh-CN": "- 分类：M 动态风格 · 其他特别的风格",
+    "en": "- 分类：M 动态风格 · 其他特别的风格"
+  },
+  "details": {
+    "zh-CN": "分类：其他特别的风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：其他特别的风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

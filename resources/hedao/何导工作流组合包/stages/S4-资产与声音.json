@@ -1,0 +1,409 @@
+{
+  "skeleton_id": "S4",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "资产与声音",
+  "stage_numbers": [
+    5
+  ],
+  "purpose": "抽资产、写生图提示词、生成定妆照/场景/道具图、生成声音圣经与基准音轨。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout",
+        "gate_enforcement"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S4.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [
+      {
+        "name": "场次分镜卡",
+        "path": "06-分镜/02-场次分镜卡/*.md",
+        "schema": "storyboard_card",
+        "must_contain": [
+          "镜号",
+          "持续时长",
+          "机位",
+          "景别",
+          "光影",
+          "场景与人物",
+          "画面内容",
+          "运镜",
+          "音效"
+        ]
+      },
+      {
+        "name": "场景人物清单",
+        "path": "06-分镜/01-分镜管线/场景人物清单.json",
+        "schema": "scene_roster",
+        "must_contain": [
+          "scene_id",
+          "asset_id",
+          "正式名",
+          "站位"
+        ]
+      },
+      {
+        "name": "分镜总时长统计",
+        "path": "06-分镜/01-分镜管线/分镜总时长统计.json",
+        "schema": "duration_stat"
+      },
+      {
+        "name": "说话人ID映射表",
+        "path": "02-角色/04-说话人ID映射表/说话人ID映射表.json",
+        "schema": "speaker_map",
+        "must_contain": [
+          "speaker_id",
+          "voice_id",
+          "asset_id"
+        ]
+      }
+    ],
+    "out": [
+      {
+        "name": "定妆照与子形态图",
+        "path": "02-角色/01-定妆照/",
+        "schema": "image_files"
+      },
+      {
+        "name": "场景与道具图",
+        "path": "03-场景/、04-参考素材/01-道具/",
+        "schema": "image_files"
+      },
+      {
+        "name": "生图提示词",
+        "path": "04-参考素材/03-资产提示词/",
+        "schema": "prompt_files"
+      },
+      {
+        "name": "声音圣经与基准音轨",
+        "path": "02-角色/03-音色圣经与基准音轨/",
+        "schema": "voice_bible",
+        "must_contain": [
+          "voice_id",
+          "声线文字设定",
+          "基准MP3"
+        ]
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_number": 5,
+      "stage_id": "stage_5_asset_prompt_and_asset_generation",
+      "name": "资产提取、生图提示词、资产图片生成与声音圣经资产生成",
+      "purpose": "从剧本和分镜提取人物、道具、场景，生成资产提示词和图片；同时为每个有台词角色生成声音圣经MP3声线资产（voice_id锁定）。",
+      "required_inputs": [
+        "stage3剧本",
+        "stage4分镜",
+        "项目风格参考",
+        "项目图像API配置",
+        "stage4固定声线圣经（文字设定）与说话人ID映射表（含voice_id）",
+        "项目H3视频接口配置（声音圣经声线视频生成用）"
+      ],
+      "process": [
+        "强制从stage4场景人物清单和角色全局资产ID映射表提取人物、道具、场景资产；角色资产以asset_id为主键，不得直接从剧本/分镜文本猜测、改名或遗漏角色。每个asset_id必须进入资产生成清单。",
+        "同一角色存在不同外貌描述时不启动专门冲突流程，不暂停工作流；按分镜中对应镜头的描述正常制作该镜头资产或状态版本。",
+        "对同一角色的不同外貌状态使用不同资产版本ID，并保留镜头到资产版本的映射，避免跨镜误用；版本选择按character_asset_folder_lock_policy执行：锁定人物资产ID时必须到02-角色/01-定妆照等资产文件夹按编号实地核对资产文件，一人多着装时按该镜画面内容中的着装/状态描述自主分辨选定唯一版本，逐镜版本选择写入镜头-资产版本映射",
+        "按资产提示词模板（asset_prompt_template：风格定义 + 资产内容）生成资产提示词并自检；资产规范以 asset_generation_spec 为准（纯白背景、角色全身三视图与上半身正面视图）。",
+        "提示词中出现参考图@标记时，必须先从08-分镜公网URL/公网素材URL索引（含已登记的xem8k5_returned_url与external公网URL）解析出对应真实图片，生成请求必须把该图片作为image字段数组中的实际URL传入；@文本只负责说明用途，不能替代image输入。",
+        "若参考图只有本地PNG，先交给stage6.5完成公网托管并取得verified URL；不得把@标记、本地路径或资产名称直接当作图片参数。",
+        "无参考图需求时，image字段可省略；有参考图需求但无法取得对应图片URL时，阻断该任务并记录asset_input_missing，不得降级为纯文本生图。",
+        "提示词自检通过且实际image输入绑定完成后调用项目图像API生成，并按api_integration.image_api.image_return_policy执行返图：取得 data[].url（或 data[].b64_json 解码）后的**同一动作内**必须立即下载本地副本并完成落地校验（文件存在且>10KB + 文件头签名正确 + 解析真实像素尺寸写回索引），校验通过后才登记返回的公网CDN地址。**出图与下载不可分离（v1.21.30）**：禁止只登记 URL 而把本地副本留到 stage6.5／stage7／后续任何阶段补取——xem8k5 返图无持久主机（oss4/5/6 数分钟即 404，oss7 亦仅约 2 天），URL 到手不等于资产到手，未落盘即视为没有资产。",
+        "返图完成后把asset_id、task_id、本地路径、xem8k5_returned_url、url_status写入08-分镜公网URL/公网素材URL索引.json（资产索引，角色、场景、道具统一登记）与13-工作流文档/API任务索引.json；缺少公网URL或URL校验未通过的资产阻断其依赖镜头，不得降级为纯文本生图。",
+        "对生成的资产图片执行结果自检；图片结果自检与返图登记全部通过后，才允许将提示词、任务ID、实际参考图URL、图片和映射写入项目对应目录并将本阶段标记为passed。",
+        "角色资产提示词必须写入身份锚定词「角色ID:CHxx」（版本资产写明确版本ID），并将asset_id、角色正式名、asset_version、适用镜头范围写入资产索引；身份标识缺失时阻断任务。",
+        "角色资产仍按stage4全场景asset_id清单完整生成；每镜使用的角色参考范围另读取该镜visible_character_asset_ids，仅允许为实际入画人物选择对应版本资产，不得因场景全体在场而把未入画人物误挂到该镜。",
+        "场景资产按stage4场景人物清单登记的面映射与组级「说话人→面资产」绑定生成：含正反打/过肩的场景（scene_id已登记SCxx_F/SCxx_B）分别生成正面与背面场景面资产（asset_type=scene，画面为该面机位方向所见的环境空间，两面对应同一场景同一空间布局仅方向相反），并在资产索引记录每张面资产绑定的说话人（SCxx_F=说话人1、SCxx_B=说话人2）；未做面拆分的常规场景生成基础场景资产；面资产文件名、asset_id、版本与适用镜头范围写入资产索引",
+        "按voice_bible_audio_policy为每个有台词角色生成声音圣经：角色定妆图生成并通过自检后，读取该角色voice_id与固定声线文字设定，以定妆图公网URL为ref_image_0生成2-3条声线候选视频（H3 v2接口，不同seed），提取MP3候选，交用户试听锁定1条为正式声线并登记公网URL。",
+        "声音圣经生成顺序与资产生成同步：角色图片资产完成后立即生成该角色声线，不等待全部角色图片完成；无台词角色不生成声线、不分配voice_id。",
+        "声线MP3公网URL登记后写入08-分镜公网URL/公网素材URL索引.json与13-工作流文档/API任务索引.json（voice_returned_url、voice_id、asset_id、speaker_id、本地路径、版本）；stage7以该URL作为ref_audio输入，缺少verified声线URL的角色阻断其有台词镜头。",
+        "【v1.21.29 补充】场景面资产必须两面成对生成：读 stage4 场景人物清单中所有 face_split 非 null 的场景，逐个场景一次性生成正面（SCxx_F）与背面（SCxx_B）两张面资产，命名严格按 SCxx_F_v{n}.png／SCxx_B_v{n}.png（模式 {asset_id}_v{version}.png），两张分别返图、分别取得 verified 公网 URL、分别登记资产索引并记录其绑定的说话人；生成完成后先跑 gates/stage_5_asset_generation_gate.py 与本阶段自检，确认两面齐套（本地文件 + 公网URL + 命名三者齐全）才允许标记 passed 并进入 stage6。任一面缺失即回退返修，禁止只出单面、禁止用基础场景资产顶替。",
+        "【v1.21.30 补充】每个资产生成任务的『返图成功』判定标准是三件齐备：①取得有效公网URL；②本地副本已在同一步内落盘并通过落地校验；③local_path 已写入资产索引。三项缺一即判返图失败并回退重新出图（同一提示词同一绑定、递增版本、保留旧版），禁止带缺进入 stage6。生成完成后必须跑 gates/stage_5_asset_generation_gate.py 与 gates/asset_download_atomicity_gate.py，确认不存在『已登记 xem8k5_returned_url 但磁盘无对应本地文件』的条目，才允许标记 passed。",
+        "【v1.21.31 补充】本阶段必须为 stage4 场景人物清单中登记的**每一个场景**生成场景资产（含仅出现在空镜中的新场景），并为登记了 PRPxx 的**贯穿全剧道具**生成道具资产（纯白背景）；只出现一两次的过场道具不生成。场景资产与道具资产同样适用出图即下载原子性与落地校验（v1.21.30）；生成完成后跑 gates/stage_5_asset_generation_gate.py 确认无遗漏场景、无遗漏道具，才允许标记 passed。",
+        "【v1.23.0·子形态资产齐套】stage5 必须为**每个 status=active 的角色形态**生成资产（基底 CHxx 与各已启用子形态 CHxx_Cnn 各一份定妆照——同一张脸、不同服装/造型），并按 `{asset_id}_v{version}.png` 命名（如 `CH01_C02_v1.png`）登记本地副本与 verified 公网URL；**status=reserved 的形态是预存量，不得为其生成资产、不得登记 URL、不得计入缺资产判定**（闸门不得因此报错）；status=deprecated 的形态保留既有资产与绑定、不新增。真源 standards/character_sub_form_policy.json 的 asset_contract。",
+        "【v1.24.9·声线基准音轨严禁含语义】按 voice_bible_audio_policy 生成声音圣经时，驱动音色的语音素材必须为无词发声（无词长元音、气息、轻咳、轻笑、简单拟声），严禁在声线候选提示词中写入或朗读任何剧本台词、示例句、可辨识词汇或可拼读音节串。锁定前必须复核该候选满足 no_semantic_audio_rule 与 ref_audio_safe_content_rule（无词、≥3秒、44.1kHz可播放）；含语义的候选一律标记 failed 并重出，禁止锁定、禁止进入 stage7 作 ref_audio。背景：H3 音画同生，ref_audio_0 含语义时会在台词未填满镜头时长时被复述，实测 S01_42 台词『撞。』(0.2s)、镜头 4s，模型补念了声线轨里的『明天…试镜』。",
+        "【v1.24.7 托管后端统一为腾讯云COS】资产生成成功的同一步内，除『下载本地副本 + 落地校验』外，还必须完成『本地副本上传腾讯云COS』（api_integration.cos_imgbed / api/cos_imgbed_api.json；凭据 ../config/cos_config.json）：上传后用匿名 GET（不带任何签名）复核一次，确认 200 且内容与本地副本一致，把 COS 永久直链写入资产索引的 xem8k5_returned_url 字段、url_source=cos、url_status=verified。xem8k5 出图返回的 CDN 地址（oss*.cxkedu.shop）仅用于本次下载本地副本，禁止登记为长期挂载地址；禁止使用 uguu/0x0.st 等临时图床。　（v1.24.14 追加）上传的对象**不得是母版本体**：必须先以本地无损母版一次性转码为 WebP 再上传该 WebP 对象，索引同步登记 upload_format/upload_bytes/master_local_path/master_bytes/transcode_source/transcode_passes/quality_tier/native_resolution/downscaled_to；本地无损母版原样保留（唯一可重编码源）。口径与分档见 standards/asset_upload_format_policy.json。",
+        "【v1.24.14·上传统一为 WebP】本地无损母版落盘并通过落地校验后，上传腾讯云COS 之前必须先转码：以本地无损母版（PNG）为**唯一输入**，**一次性**编码为 WebP（transcode_passes=1），再上传该 WebP 对象；禁止直接上传母版原图、禁止对已压缩文件（WebP/JPEG）二次编码后上传——再压只省约 3% 体积却多赔一代不可逆画质损失。转码后把 upload_format=webp / upload_bytes / master_local_path / master_bytes / master_sha256 / transcode_source=lossless_master / transcode_passes=1 / quality_tier / native_resolution / downscaled_to 写入资产索引。**分档守画质**：身份锚点类（asset_type=character，含 CHxx 子形态）保原生分辨率不降采样（native_resolution=true、downscaled_to=null）；普通参考类（prop/scene/storyboard_image）按 standards/asset_upload_format_policy.json 的 quality_tiers.standard_reference 降分辨率并记录 downscaled_to。本地无损母版原样保留、不得覆盖或删除。",
+        "【v1.24.20·资产单发纪律】资产生成链路（image_prompt_skill）**废除一切自动重试**：任何资产提交前先查生成台账去重，失败即停止并把原因交导演；禁止『失败自动重发』『补跑剩余自动重发』『多路作业竞争重发』。批量（≥2 资产）开跑前先报备预计请求数（＝待生成资产数，不含重试系数）给导演确认。唯一真源 standards/one_shot_generation_policy.json。"
+      ],
+      "self_checks_count": 28
+    }
+  ],
+  "stage_policies": {
+    "stage_5_asset_prompt_and_asset_generation": {
+      "skill_source": "embedded_skills.image_prompt_skill",
+      "voice_bible_generation_policy": {
+        "trigger": "stage5角色定妆图生成并返图通过后触发",
+        "candidate_count": "每个有台词角色2-3条候选（默认3条），每条候选使用不同seed",
+        "video_generation": "调用H3 v2接口：ref_image_0=该角色定妆图公网URL，prompt以固定声线文字设定+一句代表性台词构建（参考stage7 Ref2VA台词句式），resolution与项目project_resolution一致，duration取4-6秒",
+        "candidate_storage": "声线视频voice_{voice_id}_声线视频_v{version}.mp4与候选MP3 voice_{voice_id}_声线候选{n}_v{version}.mp3均存02-角色/03-音色圣经与基准音轨/",
+        "selection": "候选MP3全部生成后暂停交用户试听挑选；用户确认1条后锁定为voice_{voice_id}_声线_v{version}.mp3正式声线，未锁定不进入stage7",
+        "index_contract": "正式声线登记voice_returned_url、voice_id、asset_id、speaker_id、asset_version、applicable_shots=全片、url_status=verified",
+        "no_speaker_rule": "无台词角色跳过全部声线流程，不分配voice_id"
+      },
+      "appearance_variation_policy": "不做冲突判定；以分镜原文为准正常生成。若同角色在不同镜头外貌不同，为每种外貌建立独立版本并仅绑定对应镜头。",
+      "failure_status": "局部资产失败时设needs_revision并记录partial_progress；成功资产保留。",
+      "character_asset_identity_policy": {
+        "source_of_truth": "强制从stage4场景人物清单及角色全局资产ID映射表提取角色资产；剧本/分镜文本仅用于核对，不得作为重新命名或猜测身份的来源。",
+        "identity_mark": "每条角色资产提示词必须加入身份锚定词「角色ID:CHxx」或对应版本ID，资产文件名、asset_id、角色正式名必须一致。",
+        "index_contract": "08-分镜公网URL/公网素材URL索引.json中每个角色资产必须记录character_name、asset_id、asset_version、applicable_shots、xem8k5_returned_url、url_status。",
+        "missing_rule": "stage4清单中的任一asset_id没有资产文件或verified公网URL，记录asset_input_missing并阻断该asset_id对应的所有下游镜头。",
+        "character_asset_folder_lock_policy": {
+          "purpose": "锁定人物资产ID时强制到资产文件夹按编号实地对应，杜绝只凭映射表文本、记忆或角色名猜测引用资产；同一角色存在多个着装/状态版本（如CH01_v1日常装、CH01_v2战斗装）时，由AI按该镜画面内容自主分辨选定唯一正确版本，防止错着装入镜",
+          "folder_lookup_rule": "锁定或引用任何人物资产ID（CHxx/CHxx_vN）时，必须到02-角色/01-定妆照（及08-分镜公网URL/公网素材URL索引.json资产索引）按编号逐一实地核对：基础ID存在、版本文件存在、编号与文件一一对应；禁止只凭映射表/清单文本引用而未核对文件夹实际资产、禁止凭角色名或印象猜测编号",
+          "multi_outfit_resolution_rule": "同一角色多个着装/状态版本时，按三级顺序自主分辨选定唯一版本：①该镜『画面内容』中的着装/状态描述（便服/制服/战斗装/受伤状态等）与版本清单描述直接匹配；②画面未描述着装时按上下文延续（前一镜同场景该角色所用版本）；③仍无法确定时按场景类型推断（如战斗场景→战斗装版本）；三级均无法锁定才写入13-工作流文档/输入缺失清单.json询问导演，禁止静默乱选",
+          "version_selection_record": "逐镜选定的资产版本写入镜头-资产版本映射与资产索引applicable_shots；同场景/同组内着装未变时沿用同一版本，着装变化必须在分镜画面内容中有明确描述并切换版本",
+          "downstream_check_rule": "stage6分镜图绑定与stage7视频ref_image提取前，把所选版本URL与该镜画面内容着装描述做最终核对；版本错配（如画面写日常装却绑战斗装版本）记录mismatch_asset_id并阻断该镜，重参正确版本后才允许放行",
+          "self_check_contract": "自检核对三项：①所有被锁定的人物资产ID均已在资产文件夹按编号实地对应（基础ID与版本文件齐备）；②一人多着装的每个镜头均已按画面内容自主选定唯一版本并记录映射；③无跨版本混用、无版本错装入镜"
+        }
+      }
+    }
+  },
+  "self_checks": {
+    "count": 28,
+    "items": [
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#0",
+        "text": "资产提取完整可追溯",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#1",
+        "text": "资产提示词按资产模板（风格定义+资产内容）组织，字段顺序正确",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#2",
+        "text": "未混用核心风格",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#3",
+        "text": "资产规范满足：角色/道具纯白背景，角色资产含全身三视图与上半身正面视图",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#4",
+        "text": "图片与对应分镜描述一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#5",
+        "text": "任务ID和本地路径已记录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#6",
+        "text": "每个生成任务均已返图：本地副本与xem8k5_returned_url成对记录，公网URL校验通过且url_source=cos（v1.24.7：URL 由本地副本上传腾讯云COS取得）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#7",
+        "text": "资产生成完成后，重新对照stage3剧本与stage4分镜原文逐场逐镜复核：分镜与剧本中出现的每个场景（含新场景首镜空镜对应的场景、场景切换涉及的场景）和每个道具（含关键道具与分镜明确要求的道具）均已提取并生成对应资产，无遗漏场景、无遗漏道具；发现遗漏时记录缺失项并返修补齐对应资产版本，不得带缺进入stage6",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#8",
+        "text": "stage4场景人物清单中的所有角色asset_id均有对应资产文件、资产版本和verified公网URL，无遗漏；缺失即记录asset_input_missing并阻断下游镜头。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#9",
+        "text": "含正反打/过肩的场景已按场景人物清单面映射生成正/反面场景资产（SCxx_F正面、SCxx_B背面，asset_type=scene），本地副本与verified公网URL齐备；未做面拆分的场景无此要求；错面绑定已阻断",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#10",
+        "text": "每个角色资产的asset_id与说话人ID映射表一一对应，角色正式名、speaker_id、voice_id和固定声线无错配。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#11",
+        "text": "同一角色不同版本均有明确版本号与适用镜头范围，镜头绑定版本与场景人物清单一致，无跨镜混用。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#12",
+        "text": "角色资产提示词含身份锚定词「角色ID:CHxx」，资产索引含character_name、asset_id、asset_version字段。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#13",
+        "text": "每镜资产引用区分场景全体角色与visible_character_asset_ids；图片生成任务未将未入画人物资产误绑定到该镜。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#14",
+        "text": "每个有台词角色均有锁定声线MP3（voice_{voice_id}_声线_v{version}.mp3）与verified公网URL（voice_returned_url），voice_id与asset_id、speaker_id一一对应；无台词角色无voice_id、无声线。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#15",
+        "text": "声线候选视频与MP3文件命名符合命名规范（voice_{voice_id}_声线视频_v{version}.mp4、voice_{voice_id}_声线候选{n}_v{version}.mp3、voice_{voice_id}_声线_v{version}.mp3），存放目录正确。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#16",
+        "text": "MP3声线检查通过：可播放、时长与声线视频一致、采样率44.1kHz；公网URL可访问且url_status=verified。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#17",
+        "text": "【场景正/反面资产成对生成（v1.21.29，机检，P0）】凡 stage4 场景人物清单中 face_split 非 null 的场景，stage5 必须两面成对生成且只认成对：正面面资产与背面面资产各一份本地副本、各自 verified 公网 URL、各自 asset_id 登记进资产索引；两面对应同一场景同一空间布局、仅机位方向相反（画面为该面机位方向所见的环境空间）。缺任一面、只出其中一面、两面共用一张图、用基础场景资产顶替面资产，均判定该场景面资产不齐套并阻断依赖该场景的 stage6 分镜图与 stage7 视频生成；禁止带缺进入 stage6。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#18",
+        "text": "【面资产命名与索引登记合规（v1.21.29，机检）】面资产文件名按 project_layout.naming.patterns.asset_image 的 {asset_id}_v{version}.png 模式生成：正面 SC{xx}_F_v{n}.png、背面 SC{xx}_B_v{n}.png；本地副本名、资产索引登记名、公网URL登记名三处一致。禁止中文面名（如『守恒商店正面.png』）、禁止省略面后缀（如用 SC04_v2.png 充当正面而实际未拆面）、禁止两面后缀对调；资产索引中每个面资产须登记其绑定的说话人（SCxx_F＝说话人1、SCxx_B＝说话人2），并与场景人物清单 group_binding 一致。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#19",
+        "text": "【出图即下载·原子性（v1.21.30，机检，P0）】每个图像生成任务在取得 data[].url（或 b64_json 解码）后的同一动作内，必须已完成本地落盘与落地校验，才算返图成功；资产索引中不得存在『已登记 xem8k5_returned_url 但 local_path 为空、或磁盘上无对应文件』的条目。禁止把 URL 先登记、本地副本留到 stage6.5／stage7／后续任何阶段补取；一旦出现『URL 已取而未落盘』，该资产按返图失败处理（记录 image_return_missing、阻断该资产并回退重新出图、递增版本保留旧版），禁止带缺进入 stage6。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#20",
+        "text": "【本地副本落地校验四项（v1.21.30，机检，P0）】每个图像返图必须通过落地校验：①文件存在且大小>10KB（0字节／截断文件判失败）；②文件头签名与声明格式一致（PNG = 89 50 4E 47 + IHDR，JPEG = FF D8 FF）；③解析真实像素尺寸并写回索引（不得拿请求的 size 参数充当实际值）；④实际比例与请求比例一致。四项任一不过即判返图失败，重下仍失败则回退重新出图。本地副本是公网URL托管的唯一源头（v1.24.7：上传腾讯云COS、stage7 提交前复检均从本地副本发起），缺失即视为该资产无法取得 COS 公网URL。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#21",
+        "text": "【场景资产必须生成（v1.21.31，机检，P0）】stage4 场景人物清单中登记的**每一个场景**（含只在空镜中出现的新场景、场景切换涉及的所有场景）都必须生成对应的场景资产图（asset_type=scene，画面为该场景环境空间），无一遗漏；含正反打/过肩的场景按 face_split 两面成对生成（SCxx_F／SCxx_B），未做面拆分的场景生成基础场景资产（SCxx）。缺任一场景资产即判该场景不可用，阻断依赖该场景的全部镜头（stage6 分镜图与 stage7 视频）；禁止在没有任何场景资产的情况下继续下游——分镜图与视频必须绑定真实场景参考图，不得靠模型自由发挥空间结构。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#22",
+        "text": "【道具资产生成门槛（v1.21.31，机检，P0）】道具资产只对**贯穿全剧的道具**生成：全片反复出现、承载剧情线索／伏笔／关键动作／信物的道具（如天平、相框、直播手机）必须登记 PRPxx 并生成道具资产图（asset_type=prop，纯白背景）；**只出现一两次的过场道具一律不生成资产、不参与参考绑定**，避免多参数量膨胀挤占单镜参考图上限。同一道具全片一个 PRPxx，资产文件名与 asset_id 一致（{asset_id}_v{version}.png）；道具资产参与 stage6／stage7 参考绑定时单镜 ≤2 个，超出按画面出现顺序取前 2 个并在记录中说明被舍项。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#23",
+        "text": "【角色子形态资产齐套（v1.23.0，机检，P0）】说话人ID映射表中**每个 status=active 的角色形态**（含基底 C01 与已启用子形态）都必须有一份资产文件 + 各自 verified 公网URL，命名严格为 CH{xx}_C{nn}_v{n}.png（基底为 CH{xx}_v{n}.png）且本地名 / 索引 asset_id / URL 登记名三处一致；缺任一 active 形态的资产即阻断依赖该形态的下游镜头。执行闸门：gates/stage_5_asset_generation_gate.py 的 SUB-C5 / SUB-C6。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#24",
+        "text": "【reserved 形态不挂资产（v1.23.0，机检，P1）】status=reserved 的预存形态**不得**有资产文件、不得有公网URL登记、不得出现在任何参考绑定中（预存量尚未启用）；若 reserved 位出现了资产或绑定，即判为越权启用（须先把该位改 active 并补齐 form_name / outfit_desc / applicable_shots）。执行闸门：SUB-C7。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#25",
+        "text": "【声线基准音轨严禁含语义（v1.24.9，机检，P0）】每个有台词角色的锁定声线MP3（voice_{voice_id}_声线_v{version}.mp3）必须满足：①不含任何可辨识语义（不得含台词、示例句、可辨识词汇或可拼读音节串）；②时长 ≥3 秒；③44.1kHz 可播放。判定方式：转写该 MP3（本地 ASR 或人工复听），输出文本若含任何可辨识词句即判 FAIL。含语义的声线资产判定为语义污染，必须标记 failed、重出无词版本、递增版本号并把新版本登记进 08-分镜公网URL/公网素材URL索引.json 与 13-工作流文档/API任务索引.json；禁止把含词轨作为 ref_audio 提交 stage7。背景：H3 音画同生，ref_audio_0 含语义时，镜头时长未被台词填满的部分会被模型用 ref_audio 内容补全复述。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#26",
+        "text": "【COS 上传格式契约（v1.24.14，机检，P0）】上传腾讯云COS的图像必须由**本地无损母版一次性转码为 WebP**：①upload_format=webp、transcode_source=lossless_master、transcode_passes=1；②禁止对已压缩文件（WebP/JPEG）二次编码后上传；③本地无损母版原样保留、不得覆盖或删除（唯一可重编码源）；④身份锚点类（asset_type=character，含 CHxx 子形态）保原生分辨率（native_resolution=true、downscaled_to=null）；⑤普通参考类（prop/scene）按 standards/asset_upload_format_policy.json 降分辨率并记录 downscaled_to；⑥索引登记 upload_format/upload_bytes/master_local_path/master_bytes/transcode_source/transcode_passes/quality_tier/native_resolution/downscaled_to。体积目标：降至母版约 10%。机检：gates/asset_download_atomicity_gate.py → DL-C8~C11（P0）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_5_asset_prompt_and_asset_generation#27",
+        "text": "【资产单发（v1.24.20，机检，P0）】每个资产（含基底 CHxx 与子形态 CHxx_Cnn、场景 SCxx、道具 PRPxx）**只允许发起一次付费生成**：提交前必须查 `13-工作流文档/生成台账.json`，该 asset_id 已有 submitted/success/failed 任一条记录即禁止再提交；失败（含超时/网关抖动/读超时）一律不自动重发，交导演裁决。二次生成唯一入口＝导演逐镜授权（登记于 13-工作流文档/阶段状态.json 的 regeneration_authorizations）。机检：one_shot_generation_gate（OS-C1/C2）+ 台账字段齐备。",
+        "p0": true,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [
+      "stage_5_asset_prompt_and_asset_generation#17",
+      "stage_5_asset_prompt_and_asset_generation#19",
+      "stage_5_asset_prompt_and_asset_generation#20",
+      "stage_5_asset_prompt_and_asset_generation#21",
+      "stage_5_asset_prompt_and_asset_generation#22",
+      "stage_5_asset_prompt_and_asset_generation#23",
+      "stage_5_asset_prompt_and_asset_generation#25",
+      "stage_5_asset_prompt_and_asset_generation#26",
+      "stage_5_asset_prompt_and_asset_generation#27"
+    ],
+    "full_film_ids": [
+      "stage_5_asset_prompt_and_asset_generation#22"
+    ],
+    "p0_count": 9,
+    "full_film_count": 1,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [
+    "gates/stage_5_asset_generation_gate.py（生成完成后必跑：确认两面齐套、无遗漏场景/道具）",
+    "gates/asset_download_atomicity_gate.py（P17 明确要求：确认无『已登记URL但磁盘无对应文件』条目）"
+  ],
+  "skills_hint": [
+    "skills/image_prompt_skill.md"
+  ],
+  "api_hint": [
+    "api/image_api.json"
+  ],
+  "size_bytes": 36117
+}

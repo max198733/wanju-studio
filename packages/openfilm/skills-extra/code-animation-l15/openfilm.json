@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 156,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L15 显微镜故事",
+    "en": "L15 显微镜故事"
+  },
+  "summary": {
+    "zh-CN": "一镜从肝组织玻片推到单个细胞核，两个圆逐像素数出 2.4 倍的蓝。",
+    "en": "一镜从肝组织玻片推到单个细胞核，两个圆逐像素数出 2.4 倍的蓝。"
+  },
+  "details": {
+    "zh-CN": "适合：一层层放大，讲眼睛、神经这类感知科普很合适\n分类：实证影像\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：一层层放大，讲眼睛、神经这类感知科普很合适\n分类：实证影像\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "standard_id": "standards.asset_upload_format_policy",
+  "source_workflow_version": "v1.24.34",
+  "note": "COS 上传图像格式契约：一次转码为 WebP，按分档守画质，绝不二次压缩。本文件是口径唯一真源，骨架、技能与闸门均引用此处，禁止另立一套表述。",
+  "payload": {
+    "rule_id": "cos_upload_format_contract",
+    "scope": "所有上传腾讯云COS（api/cos_imgbed_api.json）的图片素材：角色/场景/道具资产图、分镜图。声线 MP3 不适用。",
+    "why_traffic": "腾讯云COS 外网下行流量按『单图体积 × 拉取次数』计费；参考图会被下游模型（xem8k5 生图、H3/seedance/wan3.0 视频）在每次多参请求时整张反复拉取，因此单图体积下降多少倍，下行流量就下降多少倍。把图片在上传前转成 WebP、单图体积降约 10%，等于把这条乘积直接缩小约一个数量级；反之，参考图越大，流量被拉取次数成倍放大。",
+    "core_rules": [
+      "① 一次转码：上传前以**本地无损母版**为唯一输入，**一次性**编码为 WebP 再上传。transcode_source=lossless_master、transcode_passes=1。",
+      "② 绝不二次压缩：禁止对已压缩文件（WebP/JPEG）再编码后上传。二次编码只再省约 3% 体积，却多赔一代不可逆的画质损失；母版一旦被覆盖或丢失，就永久失去了重编码的机会。",
+      "③ 母版不动：本地无损母版（PNG）原样保留在项目内，不得覆盖、不得因上传而删除——它是重传 COS 与重新转码的唯一源（对应 stage6.5 的 rehost_rule）。",
+      "④ 上传物与母版分离：COS 对象是转码派生物（WebP），不是母版本体；索引须同时记录master_local_path（母版）与 public_url（COS 上的 WebP 对象）。",
+      "⑤ 一致性：同一项目内所有图片走同一套转码口径，禁止部分素材用 WebP、部分用 PNG 混传（混传会让下游对同一批参考图出现两套解码路径）。"
+    ],
+    "quality_tiers": {
+      "_rule": "画质靠分档守住：身份锚点保原生分辨率，普通参考降分辨率。分档按 asset_type 判定，禁止按镜头重要性临时升降档（临时改档会让同一资产在不同镜里的清晰度不一致）。",
+      "identity_anchor": {
+        "label": "身份锚点档",
+        "applies_to": "asset_type=character（CHxx 基底与 CHxx_Cnn 子形态定妆照）",
+        "native_resolution": true,
+        "downscaled_to": null,
+        "encode": "WebP 近无损（-q 95 -m 6 -near_lossless 60 量级）：脸/发型/服装纹样是三视图比对与跨镜一致性的锚点，降采样会让身份特征漂移，故**保原生分辨率**，只靠 WebP 容器压缩拿体积。",
+        "reason": "身份锚点是全片角色一致性的唯一基准，任何分辨率损失都会在 stage6/stage7 被放大成'换脸'。"
+      },
+      "standard_reference": {
+        "label": "普通参考档",
+        "applies_to": "asset_type ∈ {prop, scene, storyboard_image}",
+        "native_resolution": false,
+        "downscaled_to": "长边 ≤1280（等比缩放，禁止拉伸变形）；分镜图若导演要求保构图锚点分辨率，把本项 applies_to 里的 storyboard_image 移出即可，一行改动。",
+        "encode": "WebP 有损（-q 82 -m 6 量级）：体积优先，画质在'能认出是什么'的档位即可。",
+        "reason": "道具/场景/分镜图是构图与环境参考，降分辨率带来的体积收益远大于画质损失。"
+      }
+    },
+    "index_fields": {
+      "upload_format": "webp（v1.24.14 起图片素材必须为 webp）",
+      "upload_bytes": "上传对象字节数",
+      "master_local_path": "本地无损母版项目相对路径",
+      "master_bytes": "本地无损母版字节数（upload_bytes 必须严格小于它）",
+      "master_sha256": "本地无损母版 sha256（重传与转码溯源）",
+      "transcode_source": "lossless_master（必须）",
+      "transcode_passes": "1（必须；>1 视为二次压缩）",
+      "quality_tier": "identity_anchor | standard_reference",
+      "native_resolution": "boolean（identity_anchor 必须 true）",
+      "downscaled_to": "降采样后实际像素，如 1280x854；identity_anchor 为 null"
+    },
+    "expected_saving": "单图体积降至无损母版约 10%（照片类实测量级）；白底资产图因 PNG 自身压缩率高，降幅会明显偏小（50%~70%），属正常，不判违规。",
+    "gate_ref": "gates/asset_download_atomicity_gate.py → DL-C8 / DL-C9 / DL-C10 / DL-C11（全部 P0，DL-C11 的降幅不足记 WARNING）。执行时机：stage5 资产完成后、stage6 分镜图完成后、进入 stage6.5/stage7 之前。",
+    "forbidden": [
+      "直接上传 PNG/JPG 母版到 COS",
+      "对已压缩文件二次编码后上传",
+      "上传后删除或覆盖本地无损母版",
+      "对身份锚点资产降采样",
+      "同一项目内 WebP 与 PNG 混传",
+      "把分镜图或资产图的上传格式改成非 WebP 而不改本文件与闸门（口径分叉）"
+    ]
+  }
+}

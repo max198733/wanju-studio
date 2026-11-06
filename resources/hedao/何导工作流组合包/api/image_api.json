@@ -1,0 +1,123 @@
+{
+  "api_id": "api_integration.image_api",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/xem8k5_gpt_image_config.json",
+  "payload": {
+    "stage": 5,
+    "service": "Xem8k5 GPT Image",
+    "provider": "Xem8k5 API（OpenAI兼容中转；图像与视频生成请求必须使用专用域名 image.xem8k5.top，走主站 ai.xem8k5.top 会被拒绝）",
+    "base_url": "https://image.xem8k5.top",
+    "model": "gpt-image-2.5-flare",
+    "available_models": [
+      "gpt-image-2",
+      "gpt-image-2.5",
+      "gpt-image-2.5-flare（本项目默认生图模型，2026-09-10启用）",
+      "gpt-image-2.5-sunburst"
+    ],
+    "create_endpoint": "按有无参考图二选一（**2026-10-08 实测修正**）：①**有参考图 → POST https://image.xem8k5.top/v1/images/edits（multipart/form-data，唯一生效姿势）**；②无参考图（纯文生图）→ POST https://image.xem8k5.top/v1/images/generations（application/json）。",
+    "task_endpoint": "不适用（OpenAI兼容同步接口，请求后直接等待返回结果；若后续实测发现异步任务形态，再回填本字段与轮询规则）",
+    "routing_guard": "2026-09-10实测：向主站 https://ai.xem8k5.top/v1/images/generations 提交图像请求返回400 error.code=image_endpoint_required，提示必须改用 https://image.xem8k5.top；所有生图请求一律写 image.xem8k5.top，禁止写主站域名。",
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json"
+      },
+      "credential_source": "运行时从config/xem8k5_gpt_image_config.json的api_key字段或环境变量XEM8K5_API_KEY读取；密钥仅存于config或环境变量，不得写入文档正文、提示词或交付文件"
+    },
+    "create_request": {
+      "model": "gpt-image-2.5-flare",
+      "prompt": "图像提示词",
+      "n": "生成张数，默认1",
+      "size": "OpenAI尺寸枚举；2026-09-10实测1024x1024可用（其余枚举按需再验）",
+      "response_format": "url（响应含 data[].url 公网地址；**该 CDN 地址仅用于同一动作内下载本地副本，不得登记为长期挂载地址**——v1.24.7 起公网URL一律由本地副本上传腾讯云COS取得）；缺省不传时返回 data[].b64_json，须解码保存本地后上传腾讯云COS（api/cos_imgbed_api.json）",
+      "image": "**参考图必须以 multipart 文件形式随 /v1/images/edits 提交，禁止以 URL 形式传（v1.24.18 实测修正）**：①字段名为 `image`，**每张参考图重复一个 `image` 字段（同一字段名出现 N 次）**，字段值为该图本地文件二进制（Content-Type: image/png）；②字段名写 `image[]` 会被服务端**双计**（2 张 → image_tokens=6032），禁用；③把 URL 字符串当 `image` 值提交会返回 HTTP 500 `image is required`，**URL 形式在 edits 端点完全不生效**；④把文件提交到 /v1/images/generations 会返回 503 `model_not_found`，该端点只吃 JSON、不吃文件。⑤**历史警示**：把参考图以 `image:[公网URL]` 随 /v1/images/generations 提交（本文件 2026-09-10 曾记载为「实测可用」）**已实效**——该姿势下 `usage.input_tokens_details.image_tokens` 恒为 0，服务端**静默丢弃参考图且不报错**，出图照常返回 200，表现为「人物长相漂移、服装/道具/场景锁不住」，极难察觉。",
+      "multipart_form": "**multipart 字段清单（有参考图时）**：model / prompt / n / size / response_format（普通文本字段）+ `image` ×N（每张参考图一个同名字段，值为 PNG 文件二进制）。边界与 Content-Type 必须严格正确。"
+    },
+    "create_response": {
+      "shape": "OpenAI images 标准响应；2026-09-10实测顶层字段：background/created/data/model/moderation/output_format/quality/size/usage",
+      "url_mode": "请求传response_format=url时：data[].url为可直接下载的地址（实测CDN域oss4~oss7.cxkedu.shop）。**该域无持久主机**（oss4/5/6 数分钟内404、oss7 约2天），仅用于『同一动作内下载本地副本』，下载完成后即不再引用；v1.24.7 起禁止把它登记为长期挂载地址，公网URL一律改用腾讯云COS直链。附data[].revised_prompt",
+      "b64_mode": "缺省不传response_format时：data[].b64_json为base64图片数据，须立即解码保存为本地PNG，并在同一步内上传腾讯云COS取得永久公网URL后登记（v1.24.7）。",
+      "usage": "usage.input_tokens_details.image_tokens>0表示参考图被真实消费，可作为多参生效校验点",
+      "latency": "2026-09-10实测单张1024x1024约24-43秒（同步等待）",
+      "error": "new_api_error结构：error.message / error.type / error.code（实测样例：insufficient_user_quota=账户余额不足、image_endpoint_required=域名路由错误）",
+      "reference_consumption_evidence": "**参考图是否真被消费，唯一可靠判据＝响应 usage.input_tokens_details.image_tokens**：==0 即服务端未消费参考图（**无论请求体是否写了 image 字段、无论 HTTP 是否 200**）；实测单张参考图约 1508，N 张约 N×1508（线性）。该值必须落进 13-工作流文档/API任务索引.json 的 `image_tokens_consumed` 字段，供 stage_6_image_binding_gate 的 C7 机检。"
+    },
+    "sync_rules": [
+      "同步接口：POST后直接等待HTTP响应（实测单张24-43秒），不创建任务、不轮询；同一资产不得重复并发提交。",
+      "生图请求可携带response_format=url：返回的data[].url仅用于同一动作内下载本地副本，下载并完成落地校验后**必须立即上传腾讯云COS**取得永久直链（api/cos_imgbed_api.json），再把 COS 直链写入索引；禁止把 xem8k5 返图 CDN 地址登记为长期挂载地址（v1.24.7）。URL 到手不等于资产到手——未落盘不算返图成功，未上传 COS 不算取得可用公网URL。",
+      "未传response_format而返回data[].b64_json时，立即解码保存本地副本，并在同一步内上传腾讯云COS取得永久公网URL后登记（v1.24.7）。",
+      "HTTP状态码大于等于400时读取error.message与error.code；error.code=insufficient_user_quota表示账户余额不足，暂停该资产生成并上报，不得盲目重试。",
+      "【v1.24.18 强制】有参考图的请求一律走 /v1/images/edits 的 multipart（`image` 字段逐张重复），并在同一动作内读取 usage.input_tokens_details.image_tokens：==0 即判参考图未被消费，整批停跑排查。"
+    ],
+    "image_return_policy": {
+      "purpose": "固化Xem8k5出图到资产索引、stage6.5公网托管和H3用图之间的返图闭环。",
+      "return_object": {
+        "source_field": "data[].url（或data[].b64_json解码托管后的公网URL）",
+        "alias": "xem8k5_returned_url",
+        "companion_fields": [
+          "file_name（url形态时的文件名或b64_json解码后的本地文件名）",
+          "request_id",
+          "prompt_version",
+          "asset_id或shot_id"
+        ]
+      },
+      "chain": [
+        "stage5或stage6按image_bindings组装请求，image数组只放真实参考图公网URL。",
+        "请求发出后写入13-工作流文档/API任务索引.json并按asset_id或shot_id绑定（同步接口以request_id+时间戳作为绑定标识）。",
+        "成功响应时从data[].url（或b64_json解码托管后）取得xem8k5_returned_url。",
+        "同一动作下载本地副本，并将request_id、asset_id或shot_id、本地路径、xem8k5_returned_url、url_status写入索引。",
+        "公网URL通过可访问性和Content-Type校验后才置为verified。",
+        "stage7按asset_bindings顺序将verified URL写入H3 ref_image_0~n。"
+      ],
+      "mandatory_rules": [
+        "只有成功响应且取得有效URL/图片数据才算成功；HTTP错误一律记录error.code并阻断该资产。",
+        "空data数组或无URL且无b64_json时记录image_return_missing并阻断。",
+        "有参考图时image数组不能为空，不能降级为纯文本。",
+        "本地路径不得直接提交H3，必须使用verified公网URL（v1.24.7 起即腾讯云COS直链；不得使用 uguu 等临时图床地址或 xem8k5 返图 CDN 地址）。",
+        "error.code=insufficient_user_quota时暂停出图并上报余额问题，不得重试消耗。",
+        "失败只返修失败资产或失败镜头，不重做无关产物。",
+        "【v1.21.30】出图与下载不可分离：取得返回 URL 后必须在同一动作内完成本地落盘与落地校验，禁止把 URL 留到下一阶段再取；索引中不得出现『有 xem8k5_returned_url 而无本地文件』的条目。",
+        "【v1.21.30·v1.24.7 修订】本地副本是公网URL托管的唯一源头：出图后本地落盘 → 上传腾讯云COS → 登记 COS 直链；stage6.5 复核与 stage7 提交前的异常重传全部依赖本地副本存在。本地副本缺失即视为该资产无法取得 COS 公网URL，必须当场返修，禁止带病推进到下一阶段。",
+        "【v1.24.18·P0】有参考图的镜头，响应 `usage.input_tokens_details.image_tokens` 必须 > 0；==0 即判「参考图被服务端静默丢弃」，该镜分镜图作废并阻断（不得登记 verified、不得进入 stage7），按 refresh_rule 以同一提示词与同一 image_bindings 重跑；整批全 0 时停跑排查端点与传参姿势。"
+      ],
+      "url_lifecycle": {
+        "local_copy_rule": "本地副本与公网URL（腾讯云COS直链，登记在 xem8k5_returned_url 字段）成对保存。本地副本是唯一可靠资产；v1.24.7 起公网URL由本地副本上传腾讯云COS取得，COS 直链无签名、不设TTL、永久有效——历史教训：xem8k5 返图 CDN（oss4/5/6 数分钟404、oss7 约2天）与 uguu 临时图床（TTL 1-4小时）均不可作长期引用。",
+        "atomicity_rule": "【v1.21.30 强制·出图与下载不可分离】拿到 data[].url（或 b64_json 解码）之后的同一动作内，必须立即下载本地副本并完成落地校验，才算该资产『返图成功』。禁止把 URL 先登记进索引、把本地副本留到 stage6.5 / stage7 / 后续任何阶段再补取；禁止以『URL 现在还访问得到』为由跳过落盘；禁止出现『索引里有 xem8k5_returned_url 但磁盘上没有对应文件』的状态。本地副本缺失或落地校验不通过，一律按返图失败处理——记录 image_return_missing、阻断该资产、按 refresh_rule 用同一提示词与同一绑定重新出图并递增版本，不得带缺进入下游。",
+        "landing_verification_rule": "下载后必须做落地校验，四项全过才算成功：① 文件存在且大小 > 10KB（0 字节或截断文件一律判失败）；② 文件头签名与声明格式一致（PNG = 89 50 4E 47 + IHDR；JPEG = FF D8 FF）；③ 解析真实像素尺寸并写回索引（PNG 头 16-24 字节；不得拿请求的 size 参数当实际值——实测请求 1024x1024 实际输出 1254x1254，请求 1792x1008 实际 1672x941）；④ 实际比例与请求比例一致。校验失败即重下，重下仍失败按返图失败阻断。",
+        "refresh_rule": "URL失效或校验失败时使用同一提示词和同一绑定重新生成，递增版本并保留旧版本。",
+        "recheck_rule": "每次进入stage7前校验本镜全部公网URL（HTTP 200 + Content-Type 匹配 + 体积>10KB）。v1.24.7 起 COS 直链为永久地址，正常跑批不会失效，本校验只作异常兜底；一旦异常，用本地副本重传腾讯云COS取得新URL并双写索引（本地副本存在→重传；无本地副本→无法重传，须重新出图）。"
+      }
+    },
+    "handoff_to_h3": [
+      "角色、道具、场景和分镜图公网URL按asset_bindings顺序作为H3 ref_image_0~n。",
+      "@引用顺序、asset_id顺序、image数组顺序、ref_image编号和URL索引顺序必须完全一致。",
+      "只有xem8k5_returned_url或stage6.5校验通过的公网URL可以进入H3；本地路径、file://、localhost和内网地址禁止进入。",
+      "H3请求体不得包含first_frame或last_frame字段。"
+    ],
+    "billing_and_size": {
+      "resolution": "1k|2k|4k，由接口size参数决定（实际枚举待live test确认）",
+      "estimated_cost": "以Xem8k5账户实际计费为准"
+    },
+    "multi_reference_limit": 5,
+    "multi_reference_limit_source": "沿用5张作为过渡上限；2026-09-10已实测单参考图传参可用（body字段image:[URL]），多张并行上限待后续压测确认　【v1.24.18】多参经 /v1/images/edits 以 multipart `image`×N 形式提交，N 张按 N×1508 线性计入 image_tokens。",
+    "overlimit_policy": "超过上限时启用stage6的多参超限分批合成机制，不得静默丢弃参考图。",
+    "migration_note": "2026-09-10由Duomi gpt-image-2（https://duomiapi.com，异步任务）整体切换为Xem8k5 gpt-image-2.5-flare（https://image.xem8k5.top，OpenAI兼容同步）；旧duomi配置备份于config/_bak_duomi_gpt_image_config_20260910.json。2026-09-10充值后live test已完成：response_format=url直接返回oss*.cxkedu.shop公网URL（200/image/png可访问）、1024x1024可用、body字段image:[URL]多参传参可用（image_tokens>0验证生效）。与duomi差异：新接口生成图自带可直接使用的公网URL，不再需要duomi式的CDN抓取/重托管链路；stage6.5两道URL闸门保留，仅作可访问性校验与到期续期兜底。oss*.cxkedu.shop的URL TTL未知，跑批前校验闸门必须执行。【v1.24.7 公网托管后端统一为腾讯云COS】导演指令『把原本的URL抓取使用环节全部替换成调用腾讯云COS』：xem8k5 返图 CDN 与 uguu 等临时图床全部退出长期挂载角色，公网URL一律由本地副本上传腾讯云COS取得（见 api/cos_imgbed_api.json）；出图动作扩展为『下载本地副本 → 落地校验 → 上传COS → 匿名GET复核 → 登记索引』。",
+    "reference_consumption_contract": {
+      "purpose": "把「参考图是否真被服务端消费」变成可机检的事实，堵死『接口 200 但参考图被静默丢弃』这一类最隐蔽的失效。",
+      "evidence_field": "usage.input_tokens_details.image_tokens（响应体）",
+      "pass_rule": "**凡本镜绑定了参考图（image_bindings 非空），该镜生成响应的 image_tokens 必须 > 0**；==0 或缺该字段一律判定「参考图未被消费」，该镜分镜图作废、阻断、按 refresh_rule 以同一提示词同一绑定重跑。",
+      "record_rule": "每镜出图后必须把 image_tokens_consumed 写入 13-工作流文档/API任务索引.json 对应记录；该字段是 stage_6_image_binding_gate C7 的唯一数据源。",
+      "forbidden": [
+        "禁止以「HTTP 200 + 有返回图」当作参考图已生效的证据（本契约存在的理由）。",
+        "禁止仅凭参考图 URL 可达性判定参考已生效（本机可达 ≠ 服务端可拉取 ≠ 服务端已消费）。",
+        "禁止在 image_tokens==0 时继续把该镜分镜图登记为 verified 或推进 stage7。"
+      ],
+      "batch_rule": "同一批出图必须校验**整批** image_tokens 全 > 0；只要有一镜为 0，说明姿势或端点用错，应整批停跑排查上游（不要只重跑那一镜）。"
+    }
+  }
+}

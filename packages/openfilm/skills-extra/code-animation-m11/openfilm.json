@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 47,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M11 人生循环",
+    "en": "M11 人生循环"
+  },
+  "summary": {
+    "zh-CN": "同一个人从小到老，最后无缝接回开头。",
+    "en": "同一个人从小到老，最后无缝接回开头。"
+  },
+  "details": {
+    "zh-CN": "适合：\"学无止境\"、\"一直在学\"这种讲长时间的段落。\n分类：情绪和氛围类（感受线最常用）\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：\"学无止境\"、\"一直在学\"这种讲长时间的段落。\n分类：情绪和氛围类（感受线最常用）\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

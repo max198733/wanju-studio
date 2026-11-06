@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 80,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K4 极简线条小人",
+    "en": "K4 极简线条小人"
+  },
+  "summary": {
+    "zh-CN": "几根线就是一个人，背景空",
+    "en": "几根线就是一个人，背景空"
+  },
+  "details": {
+    "zh-CN": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

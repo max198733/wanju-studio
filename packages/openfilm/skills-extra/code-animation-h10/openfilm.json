@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 139,
+  "icon": "layers",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "H10 Creative Mode",
+    "en": "H10 Creative Mode"
+  },
+  "summary": {
+    "zh-CN": "奶油底，饱和糖果色，Archivo Black 大字",
+    "en": "奶油底，饱和糖果色，Archivo Black 大字"
+  },
+  "details": {
+    "zh-CN": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

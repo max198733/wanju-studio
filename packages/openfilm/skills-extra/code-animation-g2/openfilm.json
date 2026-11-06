@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 36,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "G2 信号故障",
+    "en": "G2 信号故障"
+  },
+  "summary": {
+    "zh-CN": "画面错位、颜色分离，突然闪一下。",
+    "en": "画面错位、颜色分离，突然闪一下。"
+  },
+  "details": {
+    "zh-CN": "适合：崩溃、混乱、话被打断\n分类：G 质感\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：崩溃、混乱、话被打断\n分类：G 质感\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

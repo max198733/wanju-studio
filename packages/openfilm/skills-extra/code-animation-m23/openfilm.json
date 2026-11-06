@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 59,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M23 五幕讲解（万能讲解模板）",
+    "en": "M23 五幕讲解（万能讲解模板）"
+  },
+  "summary": {
+    "zh-CN": "五个画面讲完一件事。",
+    "en": "五个画面讲完一件事。"
+  },
+  "details": {
+    "zh-CN": "适合：一期科普的骨架，或者感受线里讲一个工具的段落。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：一期科普的骨架，或者感受线里讲一个工具的段落。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

@@ -1,0 +1,303 @@
+{
+  "layer": "redline",
+  "core_id": "CORE-REDLINE",
+  "pack_name": "何导工作流组合包",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "role": "红线层：任何环节、任何批次、任何镜次都不得违反。本文件是唯一真源，禁止在环节骨架里另存副本并手改。改规则只改这里，然后重跑 _tools/split_pack.py。",
+  "read_rule": "每环节开工第一件事读本文件全文。已在本会话读过且 sha256 未变的，不必重读。",
+  "sections": {
+    "scope": {
+      "desc": "适用范围与来源边界",
+      "content": {
+        "allowed_sources": [
+          "本JSON内嵌的剧本技能、分镜技能、生图提示词技能、视频提示词技能",
+          "用户在当前项目中上传或写入的想法、大纲、剧本和项目资料",
+          "当前项目文件夹内对应位置的配置、资产、脚本和生成结果",
+          "本工作流目录config/xem8k5_gpt_image_config.json、config/minimax_h3_config.json、config/wan_video_config.json、config/duomi_grok_video_config.json与config/seedance_video_config.json中的项目接口配置",
+          "本JSON已记录的Xem8k5 GPT Image、MiniMax-H3、通义万相Wan3.0、多米API Grok视频与火山引擎方舟Seedance接口信息",
+          "本JSON已记录的腾讯云COS图床接口信息（api/cos_imgbed_api.json；凭据 config/cos_config.json）"
+        ],
+        "forbidden_sources": [
+          "工作流外部的其他技能、教程、提示词模板、规则或创作方法",
+          "未被用户上传、未内嵌于本JSON、未写入当前项目文件夹的参考资料",
+          "擅自引入的镜头字段、命名规则、风格规则、模型规则或质检标准"
+        ],
+        "source_boundary_rule": "信息缺失时，先判断该字段是否属于允许生成的项目内衍生设定。固定声线文字设定、当前镜头语气等角色声音元数据可以依据当前项目资料由AI生成并写入项目配置；剧本台词正文、分镜画面、运镜和音效不得通过外部资料补全或擅自改写。只有无法依据项目资料确定的核心剧情、角色身份、场景事实或API信息，才写入13-工作流文档/输入缺失清单.json并暂停对应阶段。API规则维持当前版本，不新增外部接口资料。"
+      }
+    },
+    "execution_discipline": {
+      "desc": "执行纪律：不许自创、不许静默简化、不许事后合规",
+      "content": {
+        "purpose": "执行纪律：规则只能来自本文件。用于杜绝执行期自作主张（凭记忆、凭经验、凭惯例、凭上一批次的习惯办事）。",
+        "rule_source_of_truth": "本文件内的 self_checks、creation_taboo_rules、standard_* 系列、各阶段 process 与 output 为唯一执行依据。开始任一阶段前，必须先完整读取该阶段全部规则条目，逐条建立『规则条目 → 执行动作 → 证据位置』映射，再开始生成；禁止凭记忆、凭经验或凭以往批次习惯执行。",
+        "terminology_binding": "所有术语必须逐字使用本文件定义，禁止替换、扩大或缩小其含义。特别声明：『场次』（剧本场景段落）与『镜头组』（shot_group）是两个不同概念——镜头组是按 stage_workflow(stage_4).standard_shot_group_types 拆出的叙事单元，**镜数由「讲明白一件事」决定、不设数量上限**（正反打组上限=说话人数+长台词反应镜；战斗组 4-6 镜）；禁止用场次、剧情段、段落替代镜头组，禁止给场次或场景段落冠以『镜头组』标题，禁止自创组类型名。",
+        "no_self_authored_scope": "禁止自创字段名、命名规则、分组方式、阈值、状态值与质检标准；禁止引入本文件未定义的镜头字段、风格规则或模型规则。本文件未覆盖的信息按 missing_input_protocol 处理，不得自行补全后继续。",
+        "no_silent_simplification": "禁止为『先跑通流程』而合并、简化、裁剪或跳过任何规则条目、校验条目与规定产物。某条规则当前无法满足时，必须写入 13-工作流文档/输入缺失清单.json 并按 missing_input_protocol 暂停，不得降级执行、不得静默跳过、不得用近似做法替代。",
+        "no_post_hoc_compliance": "禁止先产出、后补合规：合规证据必须在产物写入正式目录之前由闸门脚本产出。事后补写的自检结果、事后追记的豁免、事后补登的索引一律无效，必须回滚重做。",
+        "prohibited_improvisation": [
+          "以『场次/剧情段』充当『镜头组』，给场次冠以镜头组标题（违 terminology_binding）",
+          "自检只实现部分条目却标记 overall_status=PASS（违 gate_enforcement.coverage_rule）",
+          "人工撰写、修改或事后补写自检结果 JSON 与报告（违 gate_enforcement.producer_rule）",
+          "未完成版本比对即开始阶段或跑批（违 global_rules.version_lock）",
+          "凭记忆执行规则，不读取当前版本的规则条目（违 rule_source_of_truth）",
+          "为跑通流程合并阶段、简化阶段或跳过校验条目（违 no_silent_simplification）",
+          "对本文件未登记的豁免情形自行放行超限项（违 gate_enforcement.severity_policy）",
+          "导演说「只做 X / 其他暂缓」时顺手多做任何附带动作（违 scope_discipline）",
+          "未先给出 old→new diff 即修改导演已确认的产物原文（违 artifact_edit_discipline）",
+          "凭印象归因、不回读实际阈值即下根因结论（违 diagnosis_discipline）",
+          "回答询问类问题时顺手写盘、恢复或重建文件（违 readonly_question_discipline）",
+          "向导演输出未翻译的技术术语或一次性多选轰炸（违 plain_language_rule）"
+        ],
+        "enforcement": "违反上述任一条，该阶段判定为 failed，按 rollback_and_revision 回滚该阶段产物并写回滚记录；已写入正式目录的产物必须撤回后重做。其中 scope_discipline / readonly_question_discipline / plain_language_rule 属交互纪律，违反时立即停止当前动作、向导演报告并等待指令，不得以「已经做了一半」为由继续。",
+        "scope_discipline": "【「只做 X」就是严格只做 X】导演说「只改 X / 其他暂缓 / 先别动 Y」时，严格只执行 X，一个附带动作都不得多做——包含但不限于「为了验证」「顺手确认一下」「反正不影响结果」的读取、跑批、调用接口、生成产物、写盘、回滚与恢复。任何额外动作，先提问取得明确授权再做。验证工作流自身的改动只能在组合包内部完成（双夹具 + verify 脚本），禁止拿任何在建项目当试验场。",
+        "artifact_edit_discipline": "【改导演已确认的原文前，必须先给 diff】凡要修改导演已确认的产物原文（分镜卡、剧本、标准件、已交付文件），必须先在对话中打印 old→new 的逐条差异、说明改动理由，等导演明确确认后才可写入；禁止以「内部修源」「顺手校正」「格式统一」为由静默改写。删除自己产生的中间产物可以，但必须当轮立即重建或事先说清楚，且删除与重建不得写在同一条命令里（前置失败会出现「只删没建」的观感）。任何生成类脚本必须自带「写完立即校验文件数」，禁止把中间态交付给导演。",
+        "diagnosis_discipline": "【禁止凭印象归因】下任何结论之前，必须回读实际阈值与实际落点（接口文档、闸门源码、索引文件、真实请求体、实测日志）并给出证据位置；禁止凭记忆、凭上一批次印象、凭直觉断定根因。猜错一次的可信度损失极大。已被证伪的假设必须写明「已排除 + 排除依据」，避免后续重复排查。禁止用统计启发式替代目检定案（例如用行/列差分、均匀度下陷判断图像是否为拼图）。导演明确反对过的技术方案，仍要给出反对意见并留档，然后按指令执行，并在日志写明「助手曾反对 + 导演坚持」。",
+        "readonly_question_discipline": "【问「是什么 / 为什么 / 在哪 / 怎么用」= 只读回答】导演提出询问类问题时，只回答，不得顺手改文件、恢复文件、重建文件、建目录、删文件——恢复与重建同样是写操作，同样需要授权。即使在只读排查中发现真实问题（文件丢失、规则冲突、数据异常），正确做法是「报现象 + 列清单 + 给选项 + 等指令」，不是直接修；哪怕出问题的是自己刚刚交付的东西，也不得自作主张恢复。",
+        "plain_language_rule": "【对导演说大白话】导演不是技术人员。面向导演的一切说明必须遵守：① 禁用未翻译的术语（API、ACL、签名、header、endpoint、payload、JSON、SDK、token、CLI、webhook 等），要用必须先换成生活比喻；② 一次只给一个动作、最多两步，禁止给「方案 A / B / C 你选一个」式的多选轰炸；③ 先讲「为什么要做这件事」，再讲「你要做什么」，不要先甩技术方案再解释；④ 长度控制在一屏内，长篇技术分析仅在导演主动要求时才给。识别信号：导演回复出现「看不懂」「什么意思」「说人话」→ 立即停止输出技术细节，切换极简大白话模式，且不得再用新术语去解释旧术语。固定比喻表：仓库=存储桶、钥匙=密钥、门锁=访问权限、取件码=URL、临时寄存柜=临时图床、自己的储物间=对象存储。"
+      }
+    },
+    "global_rules": {
+      "desc": "全局规则：阶段顺序、不跳步、原文保留、并发、连续性",
+      "content": {
+        "stage_order": [
+          "stage_1_installation_initialization",
+          "stage_2_directory_and_naming",
+          "stage_3_script_generation",
+          "stage_4_storyboard_generation",
+          "stage_5_asset_prompt_and_asset_generation",
+          "stage_6_storyboard_image_prompt_and_image_generation",
+          "stage_6_5_public_asset_url_handoff",
+          "stage_6_6_storyboard_album_generation",
+          "stage_7_video_prompt_h3_generation_and_download",
+          "stage_8_revision_confirmation_and_redo"
+        ],
+        "stage_gate": "依次执行：读取输入、校验版本锁、调用指定技能、生成阶段产物、运行该阶段闸门脚本生成 JSON 与 Markdown 自检结果（穷尽该阶段 self_checks 全部条目）、闸门通过后写入正式目录、更新阶段状态、按推进模式继续或暂停。禁止先写入正式目录后补做自检；禁止以人工自检替代闸门脚本。",
+        "no_skip": "不得跳过阶段，不得提前执行后续阶段，不得把多个阶段合并成无边界操作。",
+        "localized_handoff_exception": "唯一例外：stage5或stage6在提示词需要引用只有本地副本的参考图时，允许局部调用stage6.5的公网托管能力（上传并校验URL），该动作不视为跳过或提前执行阶段；托管结果必须按stage6.5的url_rules完成校验与登记，且不触发stage6.5整体阶段推进。",
+        "project_only": "所有生产输入、配置、任务记录、提示词、图片、视频和自检结果必须位于当前项目文件夹对应位置。",
+        "original_text_preservation": "剧本和分镜原文进入下游时不得擅自改写；只能按对应技能执行规定的提取、组装、引用和格式化。",
+        "secrets": "API Key只能从项目配置或环境变量读取，禁止写入提示词、自检结果、公开日志和交付文件。",
+        "status_values": [
+          "pending",
+          "in_progress",
+          "self_checking",
+          "passed",
+          "needs_revision",
+          "failed",
+          "paused",
+          "completed"
+        ],
+        "unselected_status_policy": "用户未选择新增状态方案，因此不新增blocked、stale、partial_pass。输入缺失用paused表示；局部通过用needs_revision加partial_progress字段表示；下游失效用needs_revision加invalidated_by字段表示。",
+        "version_lock": "任何阶段开工或跑批之前，必须读取本文件 skill_version 与文件 MD5，与本项目 13-工作流文档/阶段状态.json 中对应 run 记录的 workflow_version / workflow_md5 比对；不一致时暂停并提示用户确认，禁止按旧口径继续执行。比对结果写入该 run 记录。本文件任何规则变更必须同步递增 skill_version 并保留 _bak_v{旧版本}.md 备份，禁止静默修改规则。",
+        "terminology_binding": "见 execution_discipline.terminology_binding：所有术语逐字使用本文件定义，『场次』与『镜头组』不得混用。",
+        "dialogue_text_preservation": "【台词纪律：导演给的原台词一字不改】导演在需求中写出的原台词必须原样照录——不拆句、不扩写、不「润色」、不追加补充金句。他写出原台词即视为骨架已定，助手只补舞台指示、镜头建议、音效与动作落点；落点优先交给动作、音效、镜头，而不是再补一句台词。宁可少写一句，不要多写一句。剧本正文中凡带「（以下台词为定稿，勿改）」标记的段落，任何人不得改动。本条与 original_text_preservation 并行生效：后者管下游阶段的提取/组装/引用不得改写，本条管创作期不得改写台词本体。",
+        "generation_concurrency": "【生成并发口径（图片 / 视频 / 资产 / 声线一律适用）】按当前批次的任务数一次全部提交：每 5 个为一组、组数不限量——不是「总共只有 5 路」。禁止在报备或实现中写死固定并行度 5；并发数 = 本次任务数（受沙箱上限约束，可用环境变量 GEN_CONCURRENCY 覆盖）。时效硬指标：一批生成最多 20 分钟必须出完；超时先查并行度是否开够，不得归因于「模型慢」——这类「慢」是配置错误，不是平台慢。实现必须用线程池（concurrent.futures.ThreadPoolExecutor），禁止在 for 循环内同步等待每个任务跑完（那是串行，慢数倍）。与 one_shot_generation_policy 并行生效：同一 shot_id 不得并发多路，但不同 shot_id / 不同资产之间全量并行完全合规，去重仍按 shot_id 维度并用文件锁保证同一 id 单一在途。配套两道强制保护：① 台账 / 索引 JSON 的「读-改-写」必须加线程锁，避免并发写互相覆盖导致丢记录（丢 task_id 后无法恢复，只能重发）；② 进度输出必须 flush（或加 -u），否则重定向到日志时被缓冲，进程被杀就看不到任何进度。生成器必须具备三态能力：既有产物跳过 → 有 task_id 在途则「轮询恢复」绝不重发 → 无记录才提交。",
+        "spatial_and_action_continuity_rules": "【v1.24.35 三条分镜空间/动作硬规则（跨阶段生效，P0）】① **站位与朝向双锁定**：场景开头锁定全员站位时必须同步锁朝向（身体/面部/视线落点），后续镜不得擅动，转身必须写出起止动作（scene_blocking_policy.facing_lock_rule）；② **逐镜入画名单**：多人同场每镜开头写明『画面内只有X、Y两人』并与『场景与人物』栏逐字对齐，全景/远景必含全部在场者（scene_character_roster_policy.per_shot_presence_declaration_rule）；③ **动作接力显式继承**：跨镜延续的动作必须写『保持与上一镜一样的姿态——复述手/脚/重心/朝向』（continuity_policy.action_handoff_rule）。三条同时作用于 stage4 分镜卡、stage6 分镜图提示词、stage7 视频提示词——图片与视频两条链都必须命中。"
+      }
+    },
+    "state_management": {
+      "desc": "状态文件与状态流转",
+      "content": {
+        "state_file": "13-工作流文档/阶段状态.json",
+        "required_fields": [
+          "workflow_id",
+          "started_at",
+          "advance_mode",
+          "workflow_control",
+          "current_stage",
+          "stage_status",
+          "partial_progress",
+          "invalidated_by",
+          "input_paths",
+          "output_paths",
+          "self_check_json",
+          "self_check_markdown",
+          "failure_reason",
+          "next_action",
+          "stage8_decision"
+        ],
+        "status_flow": [
+          "pending",
+          "in_progress",
+          "self_checking",
+          "passed",
+          "needs_revision",
+          "failed",
+          "paused",
+          "completed"
+        ],
+        "completion_rule": "产物写入项目文件夹且机器自检JSON为PASS后才能标记passed；stage7通过后进入stage_8成片修订确认：用户确认无镜头需要修改时整体标记completed并结束；用户选择抽卡或全路重做时，按对应流程执行完毕、直至用户最终确认无镜头需要修改后才整体标记completed。"
+      }
+    },
+    "missing_input_protocol": {
+      "desc": "输入缺失协议",
+      "content": {
+        "selected_option": "B",
+        "output_format": "JSON only",
+        "file": "13-工作流文档/输入缺失清单.json",
+        "schema": {
+          "workflow_id": "string",
+          "stage_id": "string",
+          "stage_status": "paused",
+          "missing_items": [
+            {
+              "field": "string",
+              "label": "string",
+              "source": "user_input|project_file|config|api_credential|previous_stage",
+              "required": true,
+              "blocking": true,
+              "status": "waiting_user|waiting_project_file|waiting_config|waiting_api_credential|waiting_previous_stage",
+              "question": "string",
+              "received_path": null
+            }
+          ],
+          "next_action": "等待补充指定输入",
+          "created_at": "ISO 8601 datetime",
+          "updated_at": "ISO 8601 datetime"
+        },
+        "state_update": {
+          "status": "paused",
+          "failure_reason": "missing_input",
+          "missing_input_file": "13-工作流文档/输入缺失清单.json",
+          "next_action": "等待用户或项目文件补充"
+        },
+        "resume_rule": "补充输入后更新received_path，重新校验全部必填项；全部满足后恢复原阶段为in_progress。"
+      }
+    },
+    "rollback_and_revision": {
+      "desc": "回滚与版本管理（返工环节已砍，回滚保留给 S3-S7 内部用）",
+      "content": {
+        "selected_option": "A",
+        "strategy": "分层局部回滚，旧版本全部保留。",
+        "files": {
+          "rollback_log": "13-工作流文档/回滚记录.json",
+          "version_map": "13-工作流文档/版本映射.json"
+        },
+        "failure_types": [
+          "stage_internal",
+          "upstream_input",
+          "cross_stage_dependency",
+          "local_artifact",
+          "full_stage"
+        ],
+        "rules": [
+          "单文件或单镜问题只返修失败产物，不重做无关产物。",
+          "单镜头组问题只返修该组，并重新检查受影响的连续镜头。",
+          "上游设定变化时，回退到产生问题的最近已知阶段；受影响下游阶段状态改为needs_revision并记录invalidated_by。",
+          "旧产物不删除、不覆盖；每次返修生成递增版本。",
+          "stage6单镜分镜图失败时复用stage5已通过资产，只返修失败镜头。",
+          "stage6.6图册失败时复用已通过的分镜脚本与分镜图，只重建对应图册；上游stage4或stage6返修导致图册过期时仅重排受影响图册。",
+          "stage7单镜视频失败时复用已通过的分镜原文、资产和分镜图，只处理失败镜头。"
+        ],
+        "rollback_record_schema": {
+          "rollback_id": "string",
+          "trigger_stage": "string",
+          "target_stage": "string",
+          "scope": "artifact|shot|shot_group|stage",
+          "affected_ids": [],
+          "preserved_versions": [],
+          "invalidated_versions": [],
+          "new_version": "string",
+          "reason": "string",
+          "created_at": "ISO 8601 datetime",
+          "stage8_decision": "object|null（stage8 三问的答复原文、答复时间戳与 answer_source；非 stage8 触发的回滚记 null）"
+        }
+      }
+    },
+    "self_check_protocol": {
+      "desc": "自检协议与状态映射",
+      "content": {
+        "selected_option": "A",
+        "note": "本节只保留『自检数据的结构定义』（machine_schema / status_mapping / manifest_fields / rule_source_version）；闸门的执行口径与产物路径以 gate_enforcement 为唯一权威来源，见本节 gate_enforcement_ref 与 outputs_ref。原独立 outputs 已合并删除，消除与 gate_enforcement.outputs 的双命名分叉。",
+        "machine_schema": {
+          "workflow_id": "string",
+          "stage_id": "string",
+          "stage_version": "string",
+          "checked_at": "ISO 8601 datetime",
+          "overall_status": "PASS|FAIL|WARNING",
+          "blocking": "boolean",
+          "partial_progress": "boolean",
+          "checks": [
+            {
+              "check_id": "string",
+              "label": "string",
+              "status": "PASS|FAIL|WARNING|SKIPPED",
+              "severity": "P0|P1|P2|P3",
+              "blocking": "boolean",
+              "expected": "any",
+              "actual": "any",
+              "evidence": "project-relative path or source location",
+              "repair_action": "string|null"
+            }
+          ],
+          "failed_checks": [],
+          "warnings": [],
+          "rollback": {
+            "required": "boolean",
+            "target_stage": "string|null",
+            "scope": "artifact|shot|shot_group|stage|null"
+          },
+          "next_action": "string"
+        },
+        "status_mapping": {
+          "PASS": "passed",
+          "FAIL_REPAIRABLE": "needs_revision",
+          "FAIL_UNRECOVERABLE": "failed",
+          "MISSING_INPUT": "paused",
+          "USER_PAUSE": "paused",
+          "PARTIAL_SUCCESS": "needs_revision with partial_progress=true",
+          "REDO_FAILED_WITHOUT_SELFCHECK": "needs_revision（抽卡/全路重做路径专用直通通道：该路径按 stage8 规定不执行自检，失败时不经 FAIL_REPAIRABLE 映射，可直接置 needs_revision 并记 partial_progress=true）"
+        },
+        "gate_rule": "机器自检JSON为权威判定源，Markdown为人工阅读说明。所有P0/P1阻断项清零后才可标记passed。自检必须由 gate_enforcement 指定的闸门脚本产出并穷尽该阶段 self_checks 全部条目，禁止只实现部分条目就判定通过。",
+        "character_binding_failure_schema": {
+          "failed_checks_fields": [
+            "mismatch_asset_id",
+            "expected_character",
+            "actual_asset",
+            "shot_id",
+            "stage_id",
+            "repair_action"
+          ],
+          "repair_actions": {
+            "人物遗漏": "回退stage5补生成对应资产，再仅重跑stage6、stage7受影响镜头",
+            "人物错配": "按正确asset_id重新绑定资产公网URL，仅重跑受影响镜头",
+            "连续3镜同类错配": "触发stage4回检场景人物清单、asset_id与身份映射源头"
+          }
+        },
+        "gate_enforcement_ref": "本节的闸门定义统一以 gate_enforcement 为唯一权威来源（coverage_rule 逐条覆盖、producer_rule 只能由闸门脚本产出、pre_write_gate 先过闸门再落盘、threshold_source_rule、self_test_rule 全部按其定义执行，本节不再重复定义，避免口径分叉）。",
+        "outputs_ref": "闸门产物命名以 gate_enforcement.outputs 为唯一来源：12-质检/{stage_id}_闸门结果_v{version}.json（机器权威判定源）与 12-质检/{stage_id}_闸门汇总_v{version}.md（人工阅读说明）。历史命名『{stage_id}_自检结果_v{version}.json / {stage_id}_自检报告_v{version}.md』已废弃，不得再产出，旧文件视为历史存档。",
+        "manifest_fields": [
+          "workflow_selfcheck_total",
+          "implemented_checks",
+          "manual_checks",
+          "workflow_rule",
+          "evidence",
+          "rule_source_version"
+        ],
+        "rule_source_version": "自检结果必须记录产出时所依据的 skill_version 与文件 MD5，用于回溯规则口径。"
+      }
+    },
+    "credential_policy": {
+      "desc": "密钥策略",
+      "content": {
+        "rule": "任何密钥只存放于组合包同级的 config/ 目录；组合包内所有文件禁止出现明文密钥。",
+        "config_dir": "C:\\黛西\\技能组\\config",
+        "files": [
+          "_bak_duomi_gpt_image_config_20260910.json",
+          "_bak_minimax_h3_config_20260911.json",
+          "_bak_wan_video_config_json_20260904_模型名修正前.json",
+          "duomi_grok_video_config.json",
+          "minimax_h3_config.json",
+          "seedance_video_config.json",
+          "wan_video_config.json",
+          "xem8k5_gpt_image_config.json",
+          "mxapi_music_config.json",
+          "cos_config.json"
+        ],
+        "read_order": "先读 config/ 下对应配置文件；缺失再读同名环境变量；两者皆缺则写输入缺失清单并暂停。"
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 11,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "代码动画风格库",
+    "en": "Code animation styles",
+    "ja": "コードアニメーションのスタイル",
+    "ko": "코드 애니메이션 스타일",
+    "es": "Estilos de animación con código"
+  },
+  "summary": {
+    "zh-CN": "341 种代码动画风格：粒子、霓虹、水墨、剪纸、漫画、电影感。挑一种，内容就按那种气质动起来。",
+    "en": "341 code-animation styles — particles, neon, ink, paper-cut, comics, cinematic. Pick one and the content moves in that style.",
+    "ja": "341 種類のコードアニメーションスタイル。粒子、ネオン、水墨、切り絵、漫画、映画風。ひとつ選べば、その雰囲気で動きます。",
+    "ko": "341가지 코드 애니메이션 스타일. 입자, 네온, 수묵, 전지, 만화, 영화적 질감. 하나 고르면 그 분위기로 움직입니다.",
+    "es": "341 estilos de animación con código: partículas, neón, tinta, papel recortado, cómic, cine. Elige uno y el contenido se mueve así."
+  },
+  "details": {
+    "zh-CN": "适合：片头、讲解、品牌宣传、MV、科普，想要一个明确视觉风格的时候。\n它会：按编号或气质挑一种风格，把内容填进那份提示词，做成可编辑的动画。193 条带参考静帧，148 条是文字参考。",
+    "en": "Best for: intros, explainers, brand promos, music videos and science pieces that need one clear visual style.\nWhat it does: picks a style by number or by feel, fills the content into its prompt and makes an editable animation. 193 styles come with a reference still, 148 are text only.",
+    "ja": "こんなときに：オープニング、解説、ブランドのプロモ、MV、科学解説で、はっきりした視覚スタイルがほしいとき。\nすること：番号か雰囲気でスタイルを選び、内容をそのプロンプトに当てはめて編集できるアニメーションにします。193 件は参考スチル付き、148 件は文章のみ。",
+    "ko": "이럴 때: 인트로, 설명, 브랜드 홍보, MV, 과학 콘텐츠에 뚜렷한 시각 스타일이 필요할 때.\n하는 일: 번호나 분위기로 스타일을 고르고, 내용을 그 프롬프트에 채워 편집 가능한 애니메이션으로 만듭니다. 193개는 참고 스틸이 있고 148개는 텍스트만 있습니다.",
+    "es": "Ideal para: intros, explicativos, promos de marca, videoclips y divulgación que necesitan un estilo visual claro.\nQué hace: elige un estilo por número o por sensación, mete el contenido en su prompt y hace una animación editable. 193 estilos traen una imagen de referencia; 148 son solo texto."
+  }
+}

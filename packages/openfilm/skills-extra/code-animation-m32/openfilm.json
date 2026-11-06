@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 68,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M32 竖屏快节奏 POV",
+    "en": "M32 竖屏快节奏 POV"
+  },
+  "summary": {
+    "zh-CN": "竖屏，节奏很快、很碎，第一人称视角，动作和音效都很满。",
+    "en": "竖屏，节奏很快、很碎，第一人称视角，动作和音效都很满。"
+  },
+  "details": {
+    "zh-CN": "适合：竖屏版的开头 3 秒，抓住人。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：竖屏版的开头 3 秒，抓住人。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

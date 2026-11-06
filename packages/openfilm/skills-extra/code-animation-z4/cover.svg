@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+<title id="title">Z4 山水</title><desc id="desc">壮丽山景，流水，古亭 / shan shui, mountains, pavilions</desc>
+<rect width="640" height="360" fill="#5b302c"/>
+<path d="M0 276H640" stroke="#d89b5b" stroke-width="2"/>
+<rect x="34" y="34" width="8" height="292" fill="#d89b5b"/>
+<text x="62" y="86" fill="#d89b5b" font-family="sans-serif" font-size="18">Z STYLE</text>
+<text x="62" y="174" fill="#fff" font-family="sans-serif" font-size="44" font-weight="700">Z4 山水</text>
+<text x="62" y="226" fill="#d5e0df" font-family="sans-serif" font-size="20">壮丽山景，流水，古亭 / shan shui, mountains, pavilions</text>
+<text x="62" y="314" fill="#b7c8c8" font-family="sans-serif" font-size="15">目录示意 · 非真实样片</text>
+</svg>

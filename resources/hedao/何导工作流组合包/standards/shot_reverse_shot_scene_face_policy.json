@@ -1,0 +1,45 @@
+{
+  "standard_id": "standards.shot_reverse_shot_scene_face_policy",
+  "source_workflow_version": "v1.24.34",
+  "source_pointer": "embedded_skills.storyboard_skill.shot_reverse_shot_scene_face_policy",
+  "gate_readable": true,
+  "purpose": "供闸门脚本与三套分镜技能按需加载；本文件为该标准的唯一真源，骨架与技能文件均只引用不复制。",
+  "payload": {
+    "purpose": "为分镜正反打与过肩镜头建立『场景正/反面（拍摄面）』管控：双人面对面对话时，机位在对话双方之间的两个方向（180°轴线两侧）来回切换，分别落在同一对话场景的正、反两个拍摄面上；把两个拍摄面登记为带面标识的场景ID并写入场景人物清单与逐镜『场景与人物』字段，保证换镜时画面按说话人正打/反打方向正确切换为该场景同一空间的两个侧面，防止相邻反打镜背景空间错乱（同一房间被生成成两个房间）或反向跳变",
+    "applicable_scope": "仅适用于同一场景内两个人物面对面对话并采用正反打组或过肩机位的镜头；单侧展示、无正反打/过肩的常规场景只登记基础场景ID，不做正/反面拆分",
+    "face_definition": "以对话双方站位与视线轴线为基准，把场景划分为两个拍摄方向（机位面）：镜头正打拍摄视觉中心正脸人物A（正打侧）所见的场景侧为『正面』；反打拍摄视觉中心正脸人物B（反打侧）所见的场景侧为『背面』。正面/背面是同一场景空间沿轴线的两个方向，空间结构、锁定站位、参照物与轴线完全一致，仅机位方向与所见背景区域相反",
+    "id_mapping_rule": "场景ID格式SC+两位序号（SC01、SC02…），全片唯一；需要正反打/过肩的场景按面登记面ID：正面=SCxx_F（F=front），背面=SCxx_B（B=back），面ID即该面场景资产与参考图绑定的asset_id（asset_type=scene）；映射随场景人物清单登记并锁定：场景正式名→scene_id→{正面: SCxx_F, 背面: SCxx_B}→面归属被拍正脸人物→对应机位方向",
+    "shot_face_assignment_rule": "逐镜按『画面视觉中心正脸人物=说话人/被拍者』归面：拍A正脸（含过B的肩拍A）=场景正面SCxx_F；拍B正脸（含过A的肩拍B）=场景背面SCxx_B；A再开口切回正面、B再开口切回背面；禁止与说话人/被拍正脸人物错配的面标注",
+    "group_face_binding_rule": "组级面-人物绑定（拆镜时一次锁死）：正反打组/过肩镜头组成立时，以该组说话人清单为键完成绑定——正打位说话人（先开口者1）绑定场景面资产A（SCxx_F）、反打位说话人（2）绑定场景面资产B（SCxx_B），绑定结果写入场景人物清单并随组锁定；组内后续每镜（含过肩）只查绑定执行：拍1正脸=面A、拍2正脸=面B，禁止逐镜临时改判、禁止中途换面重绑；三人以上对话拆多个正反打组时按组各自登记绑定；stage5资产生成、stage6分镜图绑定、stage7视频绑定均消费该组级绑定表，不再逐镜重新判断",
+    "switch_rule": "正反打/过肩跨镜只允许在同一场景 SCxx_F↔SCxx_B 之间切换，两面对应同一空间、同一锁定站位与轴线；镜头切换跟随说话人轮换，每镜画面描述按本镜所处面书写该侧场景背景；禁止跨场景、禁止把两个面写成不同房间/不同布局、禁止相邻反打镜停留同一拍摄面造成空间跳变",
+    "over_shoulder_relation": "过肩镜头归面与正反打一致：过B的肩拍A（视觉中心为A正脸）=场景正面SCxx_F；过A的肩拍B=场景背面SCxx_B；『场景与人物』字段书写格式：过[肩主角色名]的肩拍[被拍角色名]｜场景正式名·面名（面ID）。**【v1.24.17】过肩镜『场景与人物』栏必须同时列出肩主与被拍者两人（各带 CHxx）**——肩主虽为背影前景但同样出镜，必须进栏并绑参考图（真源 camera_position_system 过肩机位、image_prompt_skill 多参契约）；**禁止只列被拍者而省略肩主**。",
+    "carrier_rule": "面映射写入场景人物清单.json（每场景一条：scene_id、正面面ID、背面面ID、面归属人物与机位方向）；每镜所处面写入该镜『场景与人物』字段（场景正式名·面名（面ID），与站位、机位方向同栏并列）；不新增分镜字段",
+    "scene_asset_contract": "stage5必须为 face_split 非 null 的每个场景生成场景面资产，且两面成对、一次生成齐套（SCxx_F 正面环境图 + SCxx_B 背面环境图，asset_type=scene，两面对应同一场景同一布局仅方向相反，禁止只出其中一面、禁止用基础场景资产顶替面资产）；面资产命名按 scene_asset_naming_rule 执行（SCxx_F_v{n}.png / SCxx_B_v{n}.png，不含『场景资产图』字样），本地副本与各自 verified 公网URL 成对登记进资产索引；两面缺任一即判定该场景面资产不齐套，阻断依赖该场景的 stage6 分镜图与 stage7 视频生成；stage6分镜图参考图绑定与stage7视频Subject/ref_image均按该镜所处面引用对应面资产（@SCxx_F_场景资产图/@SCxx_B_场景资产图），禁止错面绑定（拍A正脸镜绑SCxx_B即错配阻断）",
+    "face_schema": {
+      "carrier": "06-分镜/01-分镜管线/场景人物清单.json 中该场景条目的 face_split 字段（与 scene_id / roster / blocking / axis / time_lighting_lock 同级）",
+      "field_name": "face_split",
+      "rule": "本 schema 为场景面映射的唯一真源，字段名与结构一律照抄；禁止改名（历史遗留的 face_mapping、中文字段『正面/背面/归属规则/机位方向』写法一律废止）、禁止另立嵌套层、禁止用自然语言段落代替结构化字段。不需要面拆分的场景必须写 face_split: null（不得省略该键、不得写空对象 {}）",
+      "required_fields": {
+        "front_face_id": "字符串，正面面ID，格式 SC+两位序号+_F，如 SC02_F",
+        "back_face_id": "字符串，背面面ID，格式 SC+两位序号+_B，如 SC02_B",
+        "face_owner": "对象，键严格为 front_face_id 与 back_face_id 两个字面值；值为该面被拍正脸人物『角色正式名（CHxx）』；两个面必须归属不同人物，禁止同一人物占两个面",
+        "camera_direction": "对象，键与 face_owner 完全一致；值为该面的机位方向（自哪一侧拍谁正脸），必须与 face_owner 的人物一一对应且方向相反",
+        "group_binding": "数组，该场景每个正反打/过肩组各一条：{group_id, group_no, group_type, speakers:[说话人1,说话人2], binding:{说话人1→正面面ID, 说话人2→背面面ID}}；binding 的键必须逐字取自 speakers",
+        "note": "字符串，写明本场景哪些场次/镜头组使用面拆分、哪些镜头只沿用基础场景ID、以及先开口者归正面"
+      },
+      "consistency_rule": "① front_face_id / back_face_id 必须与 scene_id 同源（SC02 → SC02_F / SC02_B），禁止跨场景编号；② face_owner 与 camera_direction 的键集合必须恰好等于 {front_face_id, back_face_id}，多键少键皆判违规；③ group_binding[].binding 的值只能是这两个面ID；④ 同一说话人在同一场景的所有组内必须绑定同一个面，禁止组间换面；⑤ scene_id 未登记面映射的常规场景一律 face_split: null",
+      "legacy_fields_rejected": [
+        "face_mapping",
+        "正面",
+        "背面",
+        "归属规则",
+        "机位方向",
+        "front_face",
+        "back_face"
+      ]
+    },
+    "scene_asset_naming_rule": "场景面资产的文件名严格按 project_layout.naming.patterns.asset_image 模式生成，即 {asset_id}_v{version}.png；面资产的 asset_id 就是面ID，故正面文件名 SC{xx}_F_v{n}.png、背面文件名 SC{xx}_B_v{n}.png（xx 为两位序号、n 为版本号）。本地副本文件名、资产索引中登记的 asset_id、公网URL登记名三处必须一致。禁止用中文面名（如『守恒商店正面.png』）、禁止省略面后缀（如用 SC04_v2.png 充当正面而实际未拆面）、禁止两面共用一张图、禁止两面后缀对调。未做面拆分的常规场景沿用基础场景资产 SC{xx}_v{n}.png。注意区分两种格式：资产文件名是 {asset_id}_v{n}.png（如 SC02_F_v1.png），而分镜图/视频提示词中的引用标记是 @[asset_id]_场景资产图（如 @SC02_F_场景资产图），二者不可混用。",
+    "self_check_contract": "自检核对六项（**v1.24.17 新增第 ⑥ 项**：过肩镜『场景与人物』栏须同时列出肩主与被拍者两人、各带 CHxx，肩主必进栏并绑参考图）：①含正反打/过肩的场景已登记scene_id与正/反面面ID映射；②正反打/过肩组成立时已完成组级『说话人→面资产』绑定（说话人1→SCxx_F、说话人2→SCxx_B）并写入场景人物清单；③逐镜『场景与人物』的面标注与组级绑定、机位方向、视觉中心正脸人物一致无悬空ID，无逐镜临时改判；④跨镜切换只发生在同场景正/反面之间，无跨场景、无错面、无换轴无交代；⑤场景正/反面资产成对齐全：face_split 非 null 的场景，SCxx_F 与 SCxx_B 两面资产必须各有一份本地副本 + 各自 verified 公网 URL，文件名与 asset_id 逐字一致（scene_asset_naming_rule），两面画面为同一空间布局、仅机位方向相反；缺任一面、命名不合规、两面共用一张图，均判定该场景面资产不齐套并阻断 stage6 分镜图与 stage7 视频生成",
+    "reaction_shot_rule": "【长台词反应镜（v1.22.0）】正反打组内，当某个说话人的台词超过 15 个字时，必须紧接其台词镜补一个说话对方的表情反应镜头——反应镜画面为该说话人的对戏对方（正脸近景/特写），捕捉其听到长台词时的表情反应；反应镜归面与该镜被拍正脸人物一致（反应镜拍的是对方正脸，故标对方所锁定的那一面，与正反打归面规则同源）；反应镜为组内例外镜种，不计入说话人数上限、豁免景别相邻约束，但不得省略。"
+  }
+}

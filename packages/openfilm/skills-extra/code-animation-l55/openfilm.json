@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 196,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L55 积木玩具",
+    "en": "L55 积木玩具"
+  },
+  "summary": {
+    "zh-CN": "积木宇航员用零件拼出火箭，飞向积木月亮。",
+    "en": "积木宇航员用零件拼出火箭，飞向积木月亮。"
+  },
+  "details": {
+    "zh-CN": "适合：一块块搭，\"搭自己的系统\"\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：一块块搭，\"搭自己的系统\"\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

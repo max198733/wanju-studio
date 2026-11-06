@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 133,
+  "icon": "layers",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "H4 Bold Poster",
+    "en": "H4 Bold Poster"
+  },
+  "summary": {
+    "zh-CN": "倾斜的花体大字，奶油底红色强调，杂志封面感",
+    "en": "倾斜的花体大字，奶油底红色强调，杂志封面感"
+  },
+  "details": {
+    "zh-CN": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

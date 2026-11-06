@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 198,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L57 移轴微缩",
+    "en": "L57 移轴微缩"
+  },
+  "summary": {
+    "zh-CN": "玩具城的早高峰，一切都像模型。",
+    "en": "玩具城的早高峰，一切都像模型。"
+  },
+  "details": {
+    "zh-CN": "适合：小人国，俯看日常生活\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：小人国，俯看日常生活\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

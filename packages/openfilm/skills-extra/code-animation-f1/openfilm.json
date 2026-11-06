@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 32,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "F1 图表生长",
+    "en": "F1 图表生长"
+  },
+  "summary": {
+    "zh-CN": "柱子一根根长出来，数字跳动，再连成线。",
+    "en": "柱子一根根长出来，数字跳动，再连成线。"
+  },
+  "details": {
+    "zh-CN": "适合：讲数据、研究结论\n分类：F 讲解\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：讲数据、研究结论\n分类：F 讲解\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

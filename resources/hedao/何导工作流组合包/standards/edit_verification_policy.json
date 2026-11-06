@@ -1,0 +1,14 @@
+{
+  "rule_id": "EVG",
+  "name": "改卡-提示词-提交闸（edit verification gate）",
+  "version": "1.0.0",
+  "severity": "P0",
+  "source_workflow_version": "v1.24.34",
+  "rules": [
+    {
+      "key": "card_edit_verify_before_submit",
+      "id": "EVG-1",
+      "text": "凡修改分镜卡后需要出图或出视频，提交生成接口前必须依次通过：①改卡；②逐条断言『每一处目标改动确实存在于卡内』；③重建提示词；④断言『重建后的提示词确实包含该新文本』；⑤四步全过才允许提交，任一步失败就地停止、不发任何请求。"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "standard_id": "storyboard_reference_mandatory_policy",
+  "source_workflow_version": "v1.24.34",
+  "title": "分镜图参考强制（全链路）",
+  "purpose": "把『不参考分镜图不允许生成任何一条视频』固化成可机检的唯一真源，杜绝『提示词里写了、请求体里没垫』与『改了分镜图、视频照旧』两类翻车。",
+  "payload": {
+    "rule_id": "SBRM-1",
+    "hard_rule": "任何一次视频生成（首次生成 / 失败重发 / 抽卡 / 全路重做 / 单镜返工），提交前该镜视频提示词的 ref_image 清单中必须含有【本镜自己的】分镜图（形如 @S0x_xx_分镜图，URL 与 08-分镜公网URL/公网素材URL索引.json 同源）。只要有一镜缺分镜图，整批一律不得提交——不是逐镜跳过、不是先发后补、不是事后补齐。",
+    "why": "实测（2026-10-13）：① 生成器参考图路径曾写死 _v1，换资产后模型看不到新图；② 视频提示词正文曾取硬编码字典 EN[shot_id]，插镜后与镜号整体错位；③ 视频提示词与生成器读取的目录曾不一致。三者共同导致『改了分镜图/卡，出视频永远不是当前内容』，白烧四轮。故本规则要求三处独立成立，任一不成立即阻断。",
+    "three_way_identity": {
+      "a_prompt": "07-分镜提示词/{shot_id}_视频提示词_v1.md 的 ref_image_0..n 清单",
+      "b_index": "08-分镜公网URL/公网素材URL索引.json 中本镜分镜图条目",
+      "c_request": "13-工作流文档/API任务索引.json 中该镜 video 记录的 ref_image 字段（实际发出的值）",
+      "requirement": "三处的『分镜图是否存在』与『URL 是否同源』必须逐镜一致；C 缺失即视为『写一套、发一套』。"
+    },
+    "reject_conditions": [
+      "任一镜 ref_image 清单里没有 @S0x_xx_分镜图 → 整批阻断（P0）",
+      "ref_image 里的分镜图 URL 与 stage6.5 索引不同源 → 整批阻断（P0）",
+      "生成器入口没有内置同一判据的硬拒绝护栏 → 阻断（P0）",
+      "闸门 h3_video_ref_binding_gate 未跑或非 PASS 就发起提交 → 阻断（P0）"
+    ],
+    "downstream_invalidation": {
+      "rule": "分镜图一旦重出（内容改 / 资产换版 / 光照场景修正等），该镜此前生成的视频一律标记作废，必须带新分镜图重出；不得沿用旧视频。",
+      "detection": "比对分镜图文件 mtime 与同镜视频文件 mtime：视频早于分镜图即判『沿用旧图产物』。"
+    },
+    "enforcement_layers": [
+      "standards/storyboard_reference_mandatory_policy.json（本文件，唯一真源）",
+      "gates/h3_video_ref_binding_gate.py（REFBIND-C1 每镜必含分镜图 / REFBIND-C8 生成器入口护栏）",
+      "gates/stage_6_image_binding_gate.py（IMG-BIND-C9 分镜图重出须作废视频）",
+      "workflow.skeleton.json：stage6 / 6.5 / 7 / 8 各 1 条 P0 self_check + stage7/stage8 process",
+      "skills/video_prompt_h3.md、video_prompt_generic.md、video_prompt_seedance25.md、video_prompt_router.md（⛔ 条目）",
+      "项目内 stage7 生成脚本入口护栏（运行时硬拒绝）"
+    ],
+    "two_independent_guards": "闸门（事前机检）与生成器入口护栏（运行时硬拒绝）必须两处独立成立，缺一不得提交——只靠闸门会被人跳过，只靠护栏会漏『写一套发一套』。"
+  }
+}

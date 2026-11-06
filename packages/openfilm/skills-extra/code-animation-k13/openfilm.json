@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 89,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K13 美漫网点",
+    "en": "K13 美漫网点"
+  },
+  "summary": {
+    "zh-CN": "粗线条，网点，速度线，对比强",
+    "en": "粗线条，网点，速度线，对比强"
+  },
+  "details": {
+    "zh-CN": "适合：讲\"卖课的人\"这种带点讽刺的段落\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：讲\"卖课的人\"这种带点讽刺的段落\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "api_id": "api_integration.policies",
+  "source_workflow_version": "v1.24.34",
+  "note": "api_integration 下的策略与配置类条目（非具体接口），集中一处避免碎片化。",
+  "credential_policy": "本文件不含任何密钥；密钥统一从 ../config/ 读取。",
+  "payload": {
+    "change_policy": "仅使用本工作流已记录的电影工作流接口规范；实际执行优先调用本工作流目录config/中的配置文件和项目文件夹内现成脚本，不从外部资料补全接口参数。",
+    "new_engine_live_test_policy": {
+      "purpose": "新接入引擎（含后续任何新增引擎）首次使用前的统一上线闸门；原 grok 与 seedance 两节各自重复的同名规则已合并到此处，统一一处定义、各引擎节只作引用。",
+      "rule": "任一引擎首次接入、或该引擎的接口参数/模型名/配置发生变化后，必须先做一次端到端 live test：取 1 张已验证公网分镜图 + 1 个最短镜头，跑通「create 建任务 → 轮询 query 取状态 → 取得视频URL → 下载本地副本」全链路，确认：①创建与查询端点（查询端点必须携带 task_id）②完成/失败状态字段③视频URL字段与生成内容结构④鉴权头格式与请求体字段名。",
+      "writeback": "实测结论必须回写对应引擎节的 endpoints/query_response 字段与 config/ 下的该引擎配置文件；与本文档记录不一致时，以实测为准并同步修正文档。",
+      "blocking": "live test 未通过前，禁止整批提交 stage7、禁止把该引擎标记为可用；仅允许用单镜继续调试。",
+      "record": "live test 的 task_id、耗时、结论写入 13-工作流文档/API任务索引.json（标记 live_test=true）。",
+      "applies_to": [
+        "grok",
+        "seedance",
+        "后续新增的任何视频引擎"
+      ]
+    },
+    "config_binding": {
+      "base_directory": "本工作流文件所在目录",
+      "xem8k5_config_file": "config/xem8k5_gpt_image_config.json",
+      "xem8k5_env_var": "XEM8K5_API_KEY",
+      "minimax_h3_config_file": "config/minimax_h3_config.json",
+      "minimax_h3_env_var": "MINIMAX_H3_API_KEY",
+      "read_order": "优先读取工作流目录config中的对应配置文件；若文件缺失，再读取同名环境变量；两者均缺失时写入输入缺失清单并暂停对应API阶段。stage7按运行配置video_engine仅读取对应引擎的配置文件（H3→minimax_h3_config.json；wan3.0→wan_video_config.json；grok→duomi_grok_video_config.json；seedance→seedance_video_config.json），禁止跨引擎读取或拼接字段。stage5／stage6 出图后的公网托管上传、stage6.5 统一托管，一律读取 config/cos_config.json（腾讯云COS图床；见 api/cos_imgbed_api.json）。",
+      "credential_handling": "API Key仅用于运行时认证，不得写入提示词、自检结果、公开日志、最终交付文件或聊天消息。",
+      "wan_video_config_file": "config/wan_video_config.json",
+      "wan_video_env_var": "WAN_VIDEO_API_KEY",
+      "mxapi_music_config_file": "config/mxapi_music_config.json",
+      "mxapi_music_env_var": "MXAPI_MUSIC_API_KEY",
+      "cos_imgbed_config_file": "config/cos_config.json",
+      "cos_imgbed_env_var": "COS_IMGBED_CONFIG"
+    },
+    "credential_locations": [
+      "本工作流目录/config/xem8k5_gpt_image_config.json",
+      "本工作流目录/config/minimax_h3_config.json",
+      "本工作流目录/config/wan_video_config.json",
+      "系统环境变量XEM8K5_API_KEY",
+      "系统环境变量MINIMAX_H3_API_KEY",
+      "系统环境变量WAN_VIDEO_API_KEY",
+      "本工作流目录/config/mxapi_music_config.json",
+      "本工作流目录/config/cos_config.json"
+    ],
+    "project_config_files": [
+      "config/xem8k5_gpt_image_config.json",
+      "config/minimax_h3_config.json",
+      "config/wan_video_config.json",
+      "config/mxapi_music_config.json",
+      "本工作流目录/config/cos_config.json"
+    ],
+    "workflow_config_files": [
+      "config/xem8k5_gpt_image_config.json",
+      "config/minimax_h3_config.json",
+      "config/wan_video_config.json",
+      "config/mxapi_music_config.json",
+      "本工作流目录/config/cos_config.json"
+    ],
+    "forbidden_credential_locations": [
+      "提示词",
+      "自检结果",
+      "公开日志",
+      "最终交付文件",
+      "聊天消息或截图"
+    ]
+  }
+}

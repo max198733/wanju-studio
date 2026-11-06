@@ -1,0 +1,458 @@
+{
+  "skeleton_id": "S6",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "图册与COS上传",
+  "stage_numbers": [
+    6.5,
+    6.6
+  ],
+  "purpose": "把分镜图与资产图上传腾讯 COS 拿公网 URL，同时生成本地分镜图册；两件事在本环节内同步推进。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout",
+        "gate_enforcement"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "note": "图册（原 stage6.6）按导演要求并入本环节，与 COS 上传同步进行。",
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S6.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [
+      {
+        "name": "分镜图提示词",
+        "path": "07-分镜提示词/",
+        "schema": "prompt_files"
+      },
+      {
+        "name": "分镜静态图",
+        "path": "08-分镜静态图/",
+        "schema": "image_files"
+      }
+    ],
+    "out": [
+      {
+        "name": "公网素材URL索引",
+        "path": "08-分镜公网URL/公网素材URL索引.json",
+        "schema": "public_url_index",
+        "must_contain": [
+          "asset_id",
+          "xem8k5_returned_url",
+          "verified"
+        ],
+        "hard_rule": "S7 只接受 verified=true 的 URL；任一绑定找不到 verified URL 即阻断该镜"
+      },
+      {
+        "name": "分镜图册",
+        "path": "08-分镜图册/",
+        "schema": "album_html"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_number": "6.5",
+      "stage_id": "stage_6_5_public_asset_url_handoff",
+      "name": "公网素材URL托管与交接",
+      "purpose": "将stage5和stage6生成的本地图片资产及stage5声音圣经声线MP3统一上传腾讯云COS，取得无签名、永久有效的公网URL，建立素材到URL的可追溯映射；禁止把本地路径冒充公网地址；禁止使用临时图床。",
+      "required_inputs": [
+        "stage5通过的角色、场景和道具图片",
+        "stage5声音圣经正式声线MP3（voice_{voice_id}_声线_v{version}.mp3）",
+        "stage6通过的分镜静态图",
+        "stage5和stage6登记的本地副本与COS公网URL（xem8k5_returned_url 字段自 v1.24.7 起承载腾讯云COS直链）",
+        "腾讯云COS图床配置（api/cos_imgbed_api.json；凭据 ../config/cos_config.json）",
+        "stage2命名规则"
+      ],
+      "process": [
+        "读取stage5和stage6的本地图片及08-分镜公网URL/公网素材URL索引.json（资产索引），只处理已通过自检的图片。",
+        "【v1.24.7 核心变更·统一托管后端】所有素材的公网URL一律来自腾讯云COS：读取 stage5/stage6 的本地副本 → 上传 COS → 取得永久直链。xem8k5 出图返回的 CDN 地址不是长期挂载地址（实测数分钟至 2 天即 404），仅用于同一步内下载本地副本，**不得把该地址作为挂载地址直接登记**。",
+        "逐个校验素材的 COS 公网URL：协议为 http/https、请求成功、返回内容与本地源文件一致、URL 不含任何 query 签名参数；COS 直链为永久地址，正常跑批下校验只作异常兜底。",
+        "本地副本一律通过腾讯云COS上传取得公网URL（api/cos_imgbed_api.json；URL 形如 https://<bucket>.cos.<region>.myqcloud.com/<key>，必须为无签名直链）；**key 必须以本项目前缀 {project_slug}/ 开头**（见该接口的 object_key_layout / multi_project_isolation），同一 COS 桶可服务多部剧、靠此前缀隔离，缺前缀会让不同剧的同名资产互相覆盖；不得把C:\\、\\\\、file://、相对路径或localhost地址写入H3素材字段；不得使用 uguu/0x0.st 等临时图床。",
+        "COS URL 校验失败时：先按 rehost_rule 用本地副本重传 COS 取得新URL并更新索引；重传仍失败才回退stage5或stage6用同一提示词与同一image_bindings重新出图取得新URL，递增版本并把旧版本标记expired。",
+        "为每个角色、道具、场景和分镜图生成唯一素材记录，保存本地源路径、素材类型、版本、url_source（cos|cos_rehost|external）、source_task_id、COS对象key、最终公网URL、上传时间、匿名GET校验结果和关联shot_id。",
+        "对stage5声音圣经正式声线MP3执行腾讯云COS托管：上传取得永久直链，校验协议为http或https、请求成功且返回内容为音频（mp3），登记voice_returned_url、voice_id、asset_id、speaker_id、本地路径、版本与url_status=verified；候选MP3不上传公网。",
+        "对每个URL执行公网可访问性校验：协议必须为http或https，不能是内网地址；请求必须成功，返回内容必须是对应图片，且不能只返回登录页、重定向失败页或HTML错误页。",
+        "URL校验全部通过后，将公网URL映射写入08-分镜公网URL/公网素材URL索引.json（资产索引），供stage7唯一读取。",
+        "任一必需素材上传失败、URL失效或无法验证时，按url_failure_degradation_policy局部阻断：仅将该素材关联镜头标记blocked并记录asset_input_missing、写入blocked_镜头清单.json，其余镜头正常进入stage7；不得使用本地路径继续提交H3。",
+        "对多参超限镜头的第一阶段合成图和第二阶段最终合成图分别登记URL；只有第二阶段final_storyboard_url可作为正式分镜图交给stage7。",
+        "【v1.24.14·上传格式终检】进入 stage7 之前，除全量 URL 校验外必须逐条校验图片素材的上传格式契约：upload_format=webp、transcode_passes=1、transcode_source=lossless_master、upload_bytes < master_bytes、quality_tier 与 native_resolution/downscaled_to 字段齐全、且 master_local_path 指向的本地无损母版仍在磁盘上（母版丢失即丧失重传与再编码能力）。不满足者按 rehost_rule 用本地无损母版重转 WebP 并重传 COS 取得新 URL 后更新索引；本地母版已丢失者按 regenerate_rule 重新出图。声线 MP3 不适用本契约。"
+      ],
+      "self_checks_count": 14
+    },
+    {
+      "stage_number": "6.6",
+      "stage_id": "stage_6_6_storyboard_album_generation",
+      "name": "分镜图册生成",
+      "purpose": "在本集（或本批次）全部分镜图经 stage6.5 完成全量URL校验（原闸门B，已合并）后，把stage4分镜脚本原文与stage6定稿分镜图逐镜合版，生成本集图文对照的分镜图册（分镜脚本原文+对应分镜图），作为导演审阅分镜与下游交付的依据；只做本地HTML排版，不调用任何图像或视频生成API。",
+      "required_inputs": [
+        "stage4通过并定稿的分镜脚本原文（06-分镜/02-场次分镜卡）",
+        "stage6通过且经stage6.5全量URL校验（原闸门B，已合并）通过的分镜图（08-分镜静态图本地副本与08-分镜公网URL/公网素材URL索引.json中url_status=verified的登记）",
+        "stage6.5通过的公网素材URL索引（用于图册中分镜图与公网URL一一对应标注）",
+        "stage2命名规则",
+        "项目风格配置（用于图册封面标注，可选）"
+      ],
+      "process": [
+        "按本集全镜头的镜号顺序读取stage4分镜脚本原文，作为图册的图文母版；镜号、景别、机位、画面内容、运镜、音效、台词一律逐字保留，禁止改写、增删或翻译。",
+        "逐镜从08-分镜静态图读取该镜定稿分镜图（最高版本、url_status=verified；多参超限镜头使用第二阶段final_storyboard_url对应图，禁止使用中间合成图或旧版本）。",
+        "执行分镜图公网URL复核（image_url_prefetch）：逐镜从公网素材URL索引读取该镜分镜图COS公网URL（xem8k5_returned_url，v1.24.7起即腾讯云COS永久直链），用HTTP GET复核可访问性与Content-Type（image/*），复核结果回写该镜url_status；复核失败或URL缺失的镜头禁止入册，先按stage6.5规则修复（本地副本重传COS，或重新出图）并更新索引后，再重排本册。",
+        "生成图册HTML：每镜一页或一段，版面固定为【镜号与场次信息】【景别】【机位】【分镜图】（嵌入或引用本地图片）【画面内容】【运镜方式】【音效】【台词（有则原样、无则省略）】；整体顺序与stage4分镜脚本完全一致，场次间插入场次分镜卡标题。",
+        "图册分镜图一律采用base64内嵌（把08-分镜静态图定稿分镜图读取为base64 data URI写入HTML，禁止相对路径引用；历史教训：相对路径与失效URL均会导致图册图片空白、预览环境无法显示），并在每张分镜图下方标注该镜镜号与本次image_url_prefetch复核通过的公网URL（读公网素材URL索引）；不得引用未通过stage6.5全量URL校验的图片、不得引用他镜图片或资产图。",
+        "封面标注：项目名/集次、分镜图册版本、对应分镜脚本版本、总镜头数、分镜图总数、生成时间；封面文字不参与分镜校验。",
+        "写入08-分镜图册/S{scene_number}_分镜图册_v{version}.html并登记分镜图册索引（分镜图册清单_v{version}.json：图册文件、版本、覆盖镜号清单、每镜图文对应关系、生成时间）。",
+        "对图册执行结果自检；自检通过后写入08-分镜图册正式目录并将本阶段标记为passed。",
+        "【图册审阅闸门·仅 advance_mode=album_semiauto 时执行】本阶段写入08-分镜图册正式目录并标记passed后，**禁止直接进入 stage7**：必须立即暂停并进入 album_review_gate，向导演实际提问『图册是否通过审阅』并等待明确答复；未获答复前本阶段保持 paused，禁止自行判断图册已通过、禁止自行放行。答复『通过』→ 放行进入 stage7；答复『需修改』→ 询问需修改镜头清单，按 version_and_rollback_rule 重排图册新版本，完成后回到本闸门第 1 问继续询问，直到用户明确答复『通过』。"
+      ],
+      "self_checks_count": 9
+    }
+  ],
+  "stage_policies": {
+    "stage_6_5_public_asset_url_handoff": {
+      "outputs": [
+        "08-分镜公网URL/公网素材URL索引.json",
+        "08-分镜公网URL/素材URL校验报告.json",
+        "08-分镜公网URL/素材URL交接清单.md"
+      ],
+      "url_rules": {
+        "accepted_scheme": [
+          "http",
+          "https"
+        ],
+        "forbidden_values": [
+          "C:\\\\...",
+          "\\\\server\\...",
+          "file://...",
+          "./...",
+          "../...",
+          "localhost",
+          "127.0.0.1",
+          "内网IP地址"
+        ],
+        "required_validation": [
+          "公网DNS或公网HTTP可达",
+          "HTTP状态成功",
+          "Content-Type为图片或可被图片解析（图片素材）/ Content-Type为audio或audio/mpeg（声线MP3素材）",
+          "内容与本地源文件或已批准资产一致",
+          "URL为腾讯云COS无签名永久直链（不含 q-sign-* 等签名参数，不设 TTL）"
+        ],
+        "h3_handoff_rule": "stage7采用多参生成，只能读取本阶段通过的公网URL索引，将角色、道具、场景和分镜图URL作为ref_image传入、声线MP3的voice_returned_url作为ref_audio传入；禁止使用first_frame、last_frame、本地PNG路径或本地MP3路径。",
+        "hosting_backend_rule": "【v1.24.7】本工作流唯一允许的公网托管后端是腾讯云COS（api/cos_imgbed_api.json）。禁止使用 uguu.se / 0x0.st 等临时图床；禁止把 xem8k5 返图 CDN 地址（oss*.cxkedu.shop）登记为长期挂载地址。COS 桶权限必须为「公有读私有写」且不得配置生命周期规则，否则链接仍会带签名或随规则失效。　（v1.24.14 追加）上传 COS 的图片必须是**由本地无损母版一次性转码得到的 WebP**（content-type image/webp），不得直接上传 PNG/JPG 母版、不得对已压缩文件二次编码；本地无损母版保留在项目内作为唯一可重编码源。腾讯云COS 外网下行流量按『单图体积 × 拉取次数』计费，而参考图会被下游模型在每次多参时整张反复拉取，故单图体积下降多少，流量就下降多少。"
+      },
+      "index_schema": {
+        "workflow_id": "string",
+        "asset_id": "string",
+        "asset_type": "character|prop|scene|storyboard_image|voice_audio",
+        "voice_id": "string|null（asset_type=voice_audio时必填）",
+        "speaker_id": "string|null（asset_type=voice_audio时必填）",
+        "local_source": "project-relative path",
+        "version": "string",
+        "url_source": "cos|cos_rehost|external",
+        "source_task_id": "string|null",
+        "public_url": "string",
+        "url_status": "verified|expired|failed|pending",
+        "http_status": "integer|null",
+        "content_type": "string|null",
+        "sha256": "string|null",
+        "shot_ids": [],
+        "uploaded_at": "ISO 8601 datetime",
+        "verified_at": "ISO 8601 datetime|null",
+        "refresh_rule": "string",
+        "upload_format": "webp|png|jpeg（图片素材上传 COS 的实际格式；v1.24.14 起必须为 webp）",
+        "upload_bytes": "integer|null（上传对象字节数；用于核算下行流量）",
+        "master_local_path": "project-relative path（本地无损母版路径；唯一可重编码源，不得删除）",
+        "master_bytes": "integer|null（本地无损母版字节数；upload_bytes 必须小于它）",
+        "master_sha256": "string|null（本地无损母版 sha256，用于重传与转码溯源）",
+        "transcode_source": "lossless_master|null（转码输入；必须为 lossless_master）",
+        "transcode_passes": "integer|null（有损编码次数；必须为 1，禁止二次压缩）",
+        "quality_tier": "identity_anchor|standard_reference|null（画质分档，见 standards/asset_upload_format_policy.json）",
+        "native_resolution": "boolean|null（是否保留原生分辨率；identity_anchor 必须为 true）",
+        "downscaled_to": "string|null（降采样后的实际像素，如 1280x854；standard_reference 必填）"
+      },
+      "failure_status": "必需素材上传或校验失败按url_failure_degradation_policy局部阻断：仅关联镜头blocked并记录asset_input_missing、写入blocked_镜头清单.json，其余镜头正常进入stage7；不再因单个素材失败设置全局paused；不得绕过本阶段、不得用本地路径提交H3。",
+      "index_fields": [
+        "multi_reference_overlimit_composite",
+        "composition_stage",
+        "source_asset_ids",
+        "final_storyboard_url"
+      ],
+      "url_failure_degradation_policy": {
+        "purpose": "资产公网URL校验失败时只阻断依赖该资产的镜头，不全局停批；通过blocked清单降级排队，修复后自动补跑。",
+        "asset_tier": "资产按镜头分为必需与非必需：该镜visible_character_asset_ids或该镜画面实际使用的资产=必需；场景人物清单在场但该镜未入画的资产=非必需。URL校验只针对必需资产判定阻断。",
+        "partial_blocking": "必需资产URL校验失败时，仅将该资产关联镜头标记blocked并记录asset_input_missing，其余镜头正常进入stage7跑批；本阶段不再因单个素材失败设置全局paused。",
+        "blocked_list": "blocked镜头写入08-分镜公网URL/blocked_镜头清单.json：镜号、缺失资产asset_id、缺失URL、校验失败原因、回退建议、blocked_at时间戳；blocked解除时同步从清单移除。",
+        "degradation_retry": "blocked镜头按image_return_policy.refresh_rule自动重试（xem8k5同提示词同image_bindings重新出图或重新上传）；重试成功后自动解除blocked并补跑该镜头；重试仍失败保持blocked并在阶段报告中列出，等待用户处理，不阻塞其他镜头成片。",
+        "stage7_contract": "stage7跑批遇到blocked镜头直接跳过提交并保留记录，不尝试用本地路径或无效URL提交；全批结束后按blocked清单统一重试。"
+      }
+    },
+    "stage_6_6_storyboard_album_generation": {
+      "outputs": [
+        "08-分镜图册/S{scene_number}_分镜图册_v{version}.html",
+        "08-分镜图册/分镜图册清单_v{version}.json"
+      ],
+      "album_rules": {
+        "source_of_truth": "图册图文母版只能是stage4定稿分镜脚本原文与stage6定稿分镜图（url_status=verified），不得用视频提示词、生图提示词或资产图替代。",
+        "verbatim_rule": "镜号、景别、机位、画面内容、运镜、音效、台词必须与分镜脚本原文逐字一致，无改写、无增删、无翻译；无台词镜头不写台词项。",
+        "image_mapping_rule": "每张分镜图必须与该镜镜号一一对应：图名/本地路径/公网URL与该镜登记一致；禁止把多镜画面合并成一页或错位摆放。",
+        "scope_rule": "图册以本集（或本批次）为单位生成一册，覆盖该集全部分镜镜头；单集内分镜脚本按场次分卡时，图册按场次顺序连续排版，不拆册。",
+        "image_url_prefetch_rule": "生成图册前必须复核每镜分镜图COS公网URL（image_url_prefetch）：逐镜从公网素材URL索引读取该镜xem8k5_returned_url（v1.24.7起为腾讯云COS永久直链）并HTTP GET复核（可访问、Content-Type以image/开头），复核失败或URL缺失的镜头禁止入册，先按stage6.5规则修复并更新索引；每张入册分镜图必须同时满足「本地base64内嵌可显示」与「标注本次复核通过的公网URL」两个条件，杜绝图册图片空白。",
+        "no_api_rule": "本阶段禁止调用xem8k5、H3等任何生成API，禁止对分镜图做二次生成、重绘或修改，仅做HTML排版与本地文件组装。"
+      },
+      "failure_status": "缺输入设paused；HTML排版错误、图文错位、图片引用失效等可修复问题设needs_revision并记录partial_progress；不可恢复错误设failed。advance_mode=album_semiauto 时等待图册审阅答复期间设 paused，未获答复禁止放行进入 stage7。",
+      "version_and_rollback_rule": "图册每次重排生成递增版本，旧版本保留不覆盖；上游stage4分镜脚本或stage6分镜图发生返修时，本阶段标记needs_revision并重新生成对应集图册（复用已通过图文，仅处理受影响镜头，不重跑stage5、stage6已通过内容）。",
+      "album_review_gate": {
+        "must_ask": true,
+        "applies_to": "advance_mode=album_semiauto（auto / manual 模式下本闸门不触发：auto 按自动规则推进，manual 本阶段通过自检后本就暂停）",
+        "purpose": "把图册半自动模式的暂停点从『自然语言描述』变成『必须实际执行的问答清单』，杜绝自行判断图册已通过并直接进入 stage7。",
+        "ask_discipline": "一轮只提一题：每次只提出一个提问项并在该轮停下等待答复，收到明确答复后才可提下一个；禁止把两个及以上提问项写进同一条消息、同一张表格或同一道多选题。每问都必须真实向用户提问并等待明确答复后才可继续；禁止调用记忆、历史项目、上一批次结果或默认值代替提问。",
+        "ask_timing": "stage6.6 图册写入正式目录并标记 passed 之后、进入 stage7 之前（stage6.5 托管与 stage6.6 图册均已完成的时点）",
+        "questions": [
+          {
+            "id": "album_review_confirm",
+            "question": "本集分镜图册已生成并交付，是否通过审阅？（请回答：通过 / 需修改）",
+            "options": {
+              "通过": "放行，继续进入 stage7 视频提示词与视频生成",
+              "需修改": "进入下一问，指定需修改的镜号，重排图册新版本后再问"
+            },
+            "required": true,
+            "default_if_no_answer": null,
+            "no_answer_behavior": "未获答复前本阶段设 paused 并等待；禁止默认按『通过』放行，禁止自行判断。"
+          },
+          {
+            "id": "album_revision_shot_list",
+            "question": "【仅上一问答『需修改』时询问】需要修改哪些镜头？（给出 shot_id 清单，可单镜 / 多镜 / 整集）",
+            "options": {
+              "指定镜头": "用户给出 shot_id 清单（如 S01_03、S05_07,S05_08）",
+              "整集": "整集全部镜头"
+            },
+            "ask_condition": "album_review_confirm=需修改",
+            "required": true,
+            "default_if_no_answer": null,
+            "no_answer_behavior": "未获答复前 paused 等待；禁止自行推测修改范围。"
+          }
+        ],
+        "loop_rule": "每次图册重排完成后，必须回到 album_review_confirm 再次提问是否通过审阅，直到用户明确答复『通过』才可放行 stage7。",
+        "forbidden": [
+          "凭记忆、历史批次或默认值代替提问",
+          "自行判断图册已通过并直接进入 stage7",
+          "替用户推测需修改的镜头范围",
+          "未获答复即把本阶段标记 completed 或进入 stage7"
+        ],
+        "violation_handling": "违反任一条：本阶段判定为 failed，回滚该次结论、清空 album_review_decision 记录并重新逐条提问。"
+      }
+    }
+  },
+  "self_checks": {
+    "count": 23,
+    "items": [
+      {
+        "id": "stage_6_5_public_asset_url_handoff#0",
+        "text": "所有交给stage7的素材均有真实http或https公网URL",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#1",
+        "text": "没有任何本地路径、file://、localhost或内网地址进入公网URL索引",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#2",
+        "text": "URL可访问且返回内容为对应图片",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#3",
+        "text": "素材公网URL均已通过腾讯云COS上传取得并登记：url_source=cos（或 cos_rehost），URL为无签名永久直链，COS对象key、本地副本与source_task_id可追溯到对应生成任务；索引中不存在 uguu.se/0x0.st 等临时图床地址，也不存在 xem8k5 返图 CDN 地址（oss*.cxkedu.shop）被登记为长期挂载地址的情况",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#4",
+        "text": "角色、道具、场景和分镜图URL与资产版本及shot_id一一对应",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#5",
+        "text": "每个有台词角色的正式声线MP3均已取得voice_returned_url且url_status=verified，voice_id、asset_id、speaker_id记录完整；候选MP3未上传公网",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#6",
+        "text": "必需素材URL失效时已局部阻断关联镜头并写入blocked_镜头清单.json，未阻断其余镜头；blocked清单含镜号、缺失asset_id、原因、时间戳，与公网素材URL索引一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#7",
+        "text": "本地源文件和公网URL映射可追溯",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#8",
+        "text": "公网URL索引和校验报告已写入正式目录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#9",
+        "text": "多参超限镜头中间合成图与最终分镜图均有URL记录，且stage7只消费第二阶段final_storyboard_url。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#10",
+        "text": "【本阶段不得作为补下载兜底（v1.21.30，机检，P0）】进入本阶段的每个素材（角色／场景／道具资产、分镜图、声线MP3），其本地副本必须已在前序阶段随出图同一步落盘并写入 local_path；本阶段只做『本地副本 → 公网托管／可访问性校验』，禁止把『先把 URL 登记、本地副本留到本阶段再下』当作流程。发现任一条目有公网URL但无本地副本时，立即退回对应阶段返修（资产→stage5、分镜图→stage6、声线→stage5），不得在本阶段静默补下或跳过。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#11",
+        "text": "【腾讯云COS统一托管（v1.24.7，机检，P0）】进入stage7的每个素材（角色／场景／道具资产、分镜图、声线MP3）的公网URL必须为腾讯云COS直链：域名与 config/cos_config.json 的 domain 一致（或为其子域），且不含 q-sign-algorithm/q-sign-time/q-signature 等签名参数；索引中不得出现 uguu.se／0x0.st／oss*.cxkedu.shop 等非COS域名作为长期挂载地址；每个COS URL必须能匿名HTTP GET返回200且Content-Type与素材类型匹配（图片 image/*、声线 audio/*）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#12",
+        "text": "【COS 上传格式终检（v1.24.14，机检，P0）】进入 stage7 前逐条校验图片素材（角色／场景／道具资产、分镜图）的上传格式契约：upload_format=webp、transcode_passes=1、transcode_source=lossless_master、upload_bytes < master_bytes、分档与分辨率字段齐全、且本地无损母版仍在磁盘上；缺字段／格式非 WebP／母版已删除即 P0 阻断该素材（母版丢失＝丧失重传与再编码能力）。声线 MP3 不适用。机检：gates/asset_download_atomicity_gate.py → DL-C8~C11。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_5_public_asset_url_handoff#13",
+        "text": "【分镜图参考强制（v1.24.28，机检，P0）】本阶段任何一次视频生成（含首次生成、失败重发、抽卡、全路重做、单镜返工）在提交前，该镜视频提示词的 ref_image 清单中**必须含有本镜自己的分镜图**（形如 `@S0x_xx_分镜图`，URL 与 stage6.5 索引同源）；**只要有一镜缺分镜图，整批一律不得提交**（不是逐镜跳过、不是先发后补）。提交前必须跑 `gates/h3_video_ref_binding_gate.py` 且 REFBIND-C1（每镜必含分镜图）与 REFBIND-C8（生成器入口护栏）均为 PASS；闸门非 PASS 时**禁止发起任何一条视频请求**，并须把闸门结果文件留档。生成器（stage7 生成脚本）本身必须内置同一判据并在入口处硬拒绝——闸门与生成器两处独立成立，缺一不得提交。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#0",
+        "text": "图册覆盖该集全部镜号：镜号连续无跳号、无重号、无遗漏，镜号集合与stage4分镜脚本一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#1",
+        "text": "分镜原文逐字保留：每镜的画面内容、运镜、音效、台词与stage4分镜脚本原文一致，无改写、无增删、无翻译；无台词镜头未出现台词项",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#2",
+        "text": "分镜图与镜号一一对应：每镜图名/本地路径与08-分镜静态图中该镜定稿文件一致，多参超限镜头使用第二阶段合成图，未使用中间合成图、旧版本或他镜图片",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#3",
+        "text": "图册每镜分镜图公网URL均已通过image_url_prefetch复核（HTTP可访问、Content-Type以image/开头、域名为腾讯云COS）：与08-分镜公网URL/公网素材URL索引.json登记一致且url_status=verified，无失效URL入册",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#4",
+        "text": "图册可正常打开：HTML无编码乱码；分镜图已全部base64内嵌（无相对路径引用、无空白图），预览与本地打开均可见",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#5",
+        "text": "图册封面信息完整，版本号与命名符合stage2命名规则",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#6",
+        "text": "分镜图册清单_v{version}.json已登记：图册文件、版本、覆盖镜号清单、每镜图文对应关系、生成时间均完整，命名符合storyboard_album_index规则并写入08-分镜图册",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#7",
+        "text": "本阶段未调用任何生成API、未修改分镜脚本与分镜图源文件、未引入工作流外资料",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_6_6_storyboard_album_generation#8",
+        "text": "advance_mode=album_semiauto 时已按 album_review_gate 逐条实际提问并记录答复（album_review_decision，写入阶段状态与回滚记录）；未获答复前未进入 stage7、未将本阶段标记 completed；无自行判断图册已通过的情形",
+        "p0": false,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [
+      "stage_6_5_public_asset_url_handoff#10",
+      "stage_6_5_public_asset_url_handoff#11",
+      "stage_6_5_public_asset_url_handoff#12",
+      "stage_6_5_public_asset_url_handoff#13"
+    ],
+    "full_film_ids": [],
+    "p0_count": 4,
+    "full_film_count": 0,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [
+    "gates/asset_download_atomicity_gate.py（URL 落地与索引登记）"
+  ],
+  "gates_mentioned": {
+    "list": [
+      "h3_video_ref_binding_gate.py"
+    ],
+    "rule": "这些闸门在本环节规则正文或策略块里被提到，但不在 stage_gate_map 的必跑清单内。是否执行以对应规则原文为准，不要因为出现在这里就无条件跑。"
+  },
+  "gate_refs": {
+    "asset_reference_chain_ref": "场景／道具资产与单源参考链：① stage4 场景人物清单中登记的每个场景都必须生成场景资产（含 face_split 面资产），每个贯穿全剧道具（PRPxx）都必须生成道具资产（纯白背景）——只出现一两次的过场道具不生成、不参考；② 全片参考绑定遵循单源单向链『画面内容 → 『场景与人物』栏（人物CHxx／场景SCxx含面ID／道具PRPxx）→ stage5 资产 → stage6 分镜图参考 → stage7 视频 ref_image』，链路单向、不可跳级、不可反向覆盖；③ 校验落点：stage4 闸门（字段须含道具ID、链路声明）、stage5 闸门（场景与道具资产生成齐备）、stage6 闸门（人物＋场景＋道具三集合与字段逐位一致）、pipeline_scene_face_consistency_gate（链路跨阶段一致）。任一环断裂即 P0 阻断。",
+    "download_atomicity_gate_ref": "下载原子性闸门：组合包内 gates/asset_download_atomicity_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/asset_download_atomicity_gate_闸门结果_v{version}.json 与 _闸门汇总_v{version}.md。跨 stage5／stage6／stage7 校验『出图（出片）与下载必须在同一步内原子完成』：① 资产索引、分镜图URL索引、API任务索引中不得存在『已登记公网URL但磁盘无对应本地副本』的条目（URL 已取而未落盘 = 违约）；② 每个本地副本必须通过落地校验（文件存在、大小>10KB、文件头签名与格式一致、图像真实像素可解析／视频容器头可识别）；③ 本地副本缺失即判该素材不可自愈（URL 失效后无从重托管），P0 阻断。执行时机：stage5 资产生成完成后 / stage6 分镜图生成完成后 / stage7 视频下载完成后各执行一次；任何跨阶段接力（进 stage6.5、进 stage7、进成片交付）之前，本闸门必须为 PASS 状态。本闸门不替代各阶段专项闸门；两者结论冲突时以更严者为准。　（v1.24.14 追加）本闸门同时承担 **COS 上传图像格式契约**机检，新增四条 P0：DL-C8 每个图片素材 upload_format=webp 且转码字段齐全（transcode_source=lossless_master、transcode_passes=1）；DL-C9 转码输入必须是本地无损母版且母版仍在磁盘上（母版丢失＝二次压缩风险＋丧失重传能力）；DL-C10 画质分档正确（identity_anchor 保原生分辨率且 downscaled_to 为空；standard_reference 必须记录 downscaled_to）；DL-C11 upload_bytes 必须严格小于 master_bytes，降幅 <50% 记 WARNING（白底资产图 PNG 自身压缩率高，降幅天然偏小）。口径唯一真源：standards/asset_upload_format_policy.json。"
+  },
+  "skills_hint": [],
+  "api_hint": [
+    "api/policies.json（COS 上传）"
+  ],
+  "size_bytes": 36223
+}

@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 63,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M27 无对白短片，声音讲一半",
+    "en": "M27 无对白短片，声音讲一半"
+  },
+  "summary": {
+    "zh-CN": "没有台词，全靠画面和声音讲故事。",
+    "en": "没有台词，全靠画面和声音讲故事。"
+  },
+  "details": {
+    "zh-CN": "适合：片头、片尾，或者两段之间的过渡小片段。\n分类：情绪和氛围类（感受线最常用）\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：片头、片尾，或者两段之间的过渡小片段。\n分类：情绪和氛围类（感受线最常用）\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

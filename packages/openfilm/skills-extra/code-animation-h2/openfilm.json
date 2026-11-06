@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 131,
+  "icon": "layers",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "H2 BlockFrame",
+    "en": "H2 BlockFrame"
+  },
+  "summary": {
+    "zh-CN": "新粗野主义，粗黑边框，硬投影，糖果色点缀",
+    "en": "新粗野主义，粗黑边框，硬投影，糖果色点缀"
+  },
+  "details": {
+    "zh-CN": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

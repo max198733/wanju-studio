@@ -1,0 +1,88 @@
+{
+  "api_id": "api_integration.video_api_seedance",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/seedance_video_config.json",
+  "payload": {
+    "stage": 7,
+    "service": "火山引擎方舟 Seedance 视频生成（ByteDance Doubao Seedance 系列）",
+    "provider": "火山引擎方舟 Ark（ark.cn-beijing.volces.com）",
+    "base_url": "https://ark.cn-beijing.volces.com",
+    "model_selection": {
+      "source": "运行配置.json的seedance_model字段（启动交互第一问选择video_engine=seedance后的条件追问结果）",
+      "map": {
+        "seedance2.0": "doubao-seedance-2-0-260128（Seedance 2.0；时长 4-15 秒；分辨率 480p/720p/1080p/4k；本项目按 480P/720P/1080P 三选一）",
+        "seedance2.5": "doubao-seedance-2-5-260628（Seedance 2.5；时长 4-30 秒；分辨率 480p/720p/1080p；单次最多 50 个多模态参考素材）"
+      },
+      "rule": "seedance_model=seedance2.0 时请求体 model 写作\"doubao-seedance-2-0-260128\"；seedance_model=seedance2.5 时写作\"doubao-seedance-2-5-260628\"；禁止使用其他模型名，禁止在本节写死单一模型名"
+    },
+    "endpoints": {
+      "create": "POST https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks（创建视频生成任务；火山方舟官方文档已确认）",
+      "query": "GET https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/{task_id}（查询单个任务状态与结果；必须带上 {task_id}——裸 GET /tasks 为「列出全部任务」的列表接口，不可用于轮询）",
+      "cancel": "不适用（以方舟文档为准）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json"
+      },
+      "credential_source": "工作流目录config/seedance_video_config.json的api_key字段或环境变量ARK_API_KEY",
+      "key_format": "火山方舟控制台 API Key（console.volcengine.com/ark 创建）"
+    },
+    "create_request": {
+      "model": "由运行配置seedance_model映射：seedance2.0→\"doubao-seedance-2-0-260128\"；seedance2.5→\"doubao-seedance-2-5-260628\"",
+      "content": "对象数组，按序写入：①{\"type\":\"text\",\"text\":该镜视频提示词全文}（提示词为 generic_engine_prompt_rule 通用格式：分镜脚本原文逐字保留+最上方[镜号]|持续时长|resolution行+多参@引用与URL标注，禁止H3三字段/Ref2VA六段）；②按该镜 image_bindings 顺序逐张追加资产参考图 {\"type\":\"image_url\",\"image_url\":{\"url\":该资产图公网URL},\"role\":\"reference_image\"}（Seedance 2.0/2.5 支持多图参考，2个及以上时role必填）。**【v1.24.13】seedance 路线不再传分镜图、不设 first_frame；参考图一律为资产图（人物 CHxx → 场景 SCxx → 道具 PRPxx，按镜序去重）。**",
+      "ratio": "运行配置seedance_aspect原值：\"16:9\"或\"9:16\"",
+      "resolution": "运行配置seedance_resolution的小写形式：\"480p\"|\"720p\"|\"1080p\"（默认档为720p）",
+      "duration": "该镜分镜持续时长（整数秒）；Seedance 2.0 支持 4-15 秒、Seedance 2.5 支持 4-30 秒，可传 -1 由模型自选；超上限按该模型上限截断并记录WARNING",
+      "generate_audio": "按项目配置，默认 true（Seedance 原生音画同生）；注意其音色不受 stage5 声线圣经与 voice_id 约束——若项目要求全片声线统一，置 false 并在后期按声音圣经配音，该取舍必须写入自检",
+      "watermark": "false（不加平台水印）",
+      "optional_fields": "seed（随机种子，-1为随机）、return_last_frame（是否返回尾帧图）、callback_url（任务状态回调）、execution_expires_after（任务过期秒数）、safety_identifier、tools（联网搜索工具等）；按需使用，默认不传"
+    },
+    "create_response": {
+      "task_id": "响应体 task.id（方舟异步任务 ID）"
+    },
+    "query_response": {
+      "status_values": "queued|running|succeeded|failed|expired（终态以 succeeded 为准；具体字段以首次实测返回为准）",
+      "video_url_field": "content.video_url（成功后取得视频地址；以首次实测返回为准，若结构不同则以实测结果为准并回写本节）"
+    },
+    "duration_rule": "按该镜分镜持续时长写入（整数秒）：Seedance 2.0 限 4-15 秒、Seedance 2.5 限 4-30 秒；与 H3/wan3.0 的 1/3 余量规则不同——seedance 以分镜持续时长为准，超上限时按该模型上限截断并记录WARNING（优先回 stage4 拆分超长镜）。",
+    "resolution_rule": "分辨率由 seedance_aspect（ratio，16:9|9:16）与 seedance_resolution（resolution，480p/720p/1080p）两项分别控制；两者均由启动交互的条件追问确定并写入运行配置；提示词最上方[镜号]|持续时长|resolution行写入合成值 project_resolution（{aspect}·{resolution}）并同步体现画幅方向词。",
+    "group_video_policy_seedance25": {
+      "trigger": "运行配置 video_engine=seedance 且 seedance_model=seedance2.5（此时 stage4 由 seedance2.5专属分镜技能拆解，镜头组即视频单元）",
+      "unit_rule": "以【镜头组】为提交单位：一个镜头组 = 一次 create 请求 = 一个视频产物；不再逐镜提交。组清单取自 06-分镜/01-分镜管线/镜头组清单.json。",
+      "prompt_rule": "prompt = 该组的组提示词，结构为：①最上方 `[组ID] | 组总时长：X秒 | resolution: 项目锁定分辨率` 行；②其后按组内镜序书写各镜分段，**每一镜分段必须以该镜的时间区间标注开头**，格式 `第{S}秒-第{E}秒：` 紧接该镜分镜原文（镜号/持续时长/机位/景别/光影/场景与人物/画面内容/运镜方式/音效/台词逐项保留；禁止删镜、合并描述、英文改写或剧情概括）；③再附多参@引用与公网URL标注（按组内各镜绑定顺序）。",
+      "time_axis_rule": "组内时间轴（强制）：按组内镜序累加计算每镜在组视频中的整数秒闭区间——第1镜起始秒 S_1 = 1；第k镜区间 [S_k, E_k]，E_k = S_k + d_k - 1（d_k＝该镜持续时长秒数），S_{k+1} = E_k + 1；末镜的 E_n 必须等于组总时长。区间必须连续、无空档、无重叠，且只能由组内各镜持续时长推导，禁止另编时长。示例：组总时长 20 秒、组内三镜 5/7/8 秒 → `第1-5秒：`＋镜头1分镜原文、`第6-12秒：`＋镜头2分镜原文、`第13-20秒：`＋镜头3分镜原文。机检口径：E_k=S_k+d_k-1、S_{k+1}=E_k+1、E_n=组总时长，且与 06-分镜/01-分镜管线/镜头组清单.json 中各镜起始/结束秒逐镜一致。",
+      "content_rule": "【v1.24.13】content 数组：{\"type\":\"text\",\"text\":组提示词全文} + 组内各镜资产图按 人物（CHxx）→ 场景（SCxx）→ 道具（PRPxx） 顺序、按镜序去重后逐张 {\"type\":\"image_url\",\"image_url\":{\"url\":该资产图公网URL},\"role\":\"reference_image\"}（保证组内人物与场景一致性）。**本路线不再传分镜图，不使用 first_frame。**",
+      "params_rule": "duration = 组总时长（组内各镜持续时长之和，整数秒，必须在 4-30 秒内；超限说明上游拆组未完成，阻断并回 stage4）；ratio = 运行配置 seedance_aspect；resolution = 运行配置 seedance_resolution 小写；generate_audio 按项目配置；watermark=false；不传 ref_audio。",
+      "output_rule": "下载产物命名 {shot_group_id}_视频_v{version}.mp4 到 10-成片；不再产出 {shot_id}_视频_v{n}.mp4。",
+      "index_rule": "API任务索引以 shot_group_id 绑定 task_id，并记录该组含镜清单（shot_ids）、组总时长、content 中 image_url 实际值；ref_audio_fields 为空并标注 engine=seedance、video_unit=group。",
+      "revision_rule": "stage8 的抽卡与全路重做均以镜头组为单位（抽卡=组提示词与组参数零改动重抽该组；全路重做=该组涉及镜头的 stage4→stage7 全流程重做）。",
+      "non_seedance25_rule": "video_engine=seedance 且 seedance_model=seedance2.0 时不适用本节：仍以单镜为视频单元，逐镜提交与下载（{shot_id}_视频_v{n}.mp4）。"
+    },
+    "async_rules": [
+      "创建任务后使用返回 task.id 查询，不重复创建同一任务；seedance2.5 项目以 shot_group_id 绑定 task_id。",
+      "建议每 10 秒查询一次；终态仅以 succeeded（失败为 failed/expired）判断。",
+      "succeeded 后必须下载视频本地副本到10-成片并登记视频URL到API任务索引，与 video_return_policy 同规则；方舟返回的视频URL为临时地址，必须即时下载，不可当永久存储。",
+      "failed/expired 读取失败信息；seedance2.0 单镜失败只返修该镜，seedance2.5 组级失败只返修该组，均不重做无关镜头/组。"
+    ],
+    "live_test_rule": "【v1.24.13 接口参数变更】参考图组成由「分镜图 first_frame + 其余 reference_image」改为「资产图（人物→场景→道具）全部 reference_image」。按 api_integration.policies.new_engine_live_test_policy，本变更必须先用单组做端到端 live test（重点确认：不传 first_frame 的请求能否被接受并正常出片），通过后方可整批提交 stage7；未通过前禁止整批。原规则见下（首次接入用）。\\n\\n【原规则】见 api_integration.new_engine_live_test_policy（本引擎首次接入或接口参数/模型名变化后，必须先做端到端 live test：create→轮询query→取得视频URL→下载本地，并把实测结论回写本节与 config 配置）。",
+    "differences_from_h3": [
+      "参考图模式：seedance 以 content[] 数组传文本与图片（**【v1.24.13】参考图一律为资产图（人物→场景→道具，role=reference_image）；不传分镜图、不设 first_frame**），不使用H3的 ref_image_0~n 多参与 ref_audio 声线输入。",
+      "音频：seedance 不传 ref_audio；generate_audio=true 时由模型原生生成音画同步声音，音色不受 stage5 声线圣经约束（与 H3 的 voice_id 声线锁定有本质区别）；若要求声线统一须置 false 并由后期配音。",
+      "分辨率与画幅：seedance 的 ratio 与 resolution 是两个独立参数，由 seedance_aspect 与 seedance_resolution 两问分别确定。",
+      "提示词分流：仅 video_engine=H3 调用 h3-prompt-writing 技能；seedance（与 wan3.0/grok）一律用分镜脚本原文+多参数据的通用格式（generic_engine_prompt_rule）。"
+    ],
+    "billing_and_limits": {
+      "reference_price": "Seedance 2.5 参考价：1080p 约每秒2.7元、720p 约每秒1.7元、480p 约每秒0.7元（折扣口径，以火山方舟控制台实际计费为准）；Seedance 2.0 按 token 计费，以方舟文档为准",
+      "duration_limit": "Seedance 2.0：4-15 秒；Seedance 2.5：4-30 秒",
+      "resolution_limit": "480p / 720p / 1080p（Seedance 2.0 另支持 4k，本项目不使用）",
+      "concurrency_note": "在线推理有 RPM 与并发限制（个人/企业不同），批量跑批时按方舟限流策略排队；密钥禁止写入提示词、自检结果与交付文件"
+    },
+    "routing_note": "本接口仅在运行配置video_engine=seedance时被stage7使用；video_engine=H3/wan3.0/grok时完全不读取本节，其余三个引擎的规则各自原样生效，互不覆盖。"
+  }
+}

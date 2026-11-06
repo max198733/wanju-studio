@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 54,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M18 数学/科学讲解（3Blue1Brown 那种）",
+    "en": "M18 数学/科学讲解（3Blue1Brown 那种）"
+  },
+  "summary": {
+    "zh-CN": "深色背景，公式和图形一点点变形、推导，讲得很清楚。",
+    "en": "深色背景，公式和图形一点点变形、推导，讲得很清楚。"
+  },
+  "details": {
+    "zh-CN": "适合：感知科普线，讲原理、讲数据。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：感知科普线，讲原理、讲数据。\n分类：讲解类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

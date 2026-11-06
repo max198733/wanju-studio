@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 70,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M34 新闻快讯盘点",
+    "en": "M34 新闻快讯盘点"
+  },
+  "summary": {
+    "zh-CN": "像新闻节目一样，一条一条过，每条点出看点。",
+    "en": "像新闻节目一样，一条一条过，每条点出看点。"
+  },
+  "details": {
+    "zh-CN": "适合：以后做\"这周 AI 圈有什么新东西\"这种盘点。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：以后做\"这周 AI 圈有什么新东西\"这种盘点。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

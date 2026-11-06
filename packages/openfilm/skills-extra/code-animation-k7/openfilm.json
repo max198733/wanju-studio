@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 83,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K7 日式动画",
+    "en": "K7 日式动画"
+  },
+  "summary": {
+    "zh-CN": "大眼睛，头发有造型，线条干净，镜头感强",
+    "en": "大眼睛，头发有造型，线条干净，镜头感强"
+  },
+  "details": {
+    "zh-CN": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

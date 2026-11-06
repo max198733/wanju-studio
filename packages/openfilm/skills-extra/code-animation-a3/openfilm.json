@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 13,
+  "icon": "shapes",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "A3 大字冲击",
+    "en": "A3 大字冲击"
+  },
+  "summary": {
+    "zh-CN": "一个词一个词砸进画面，跟着节拍。",
+    "en": "一个词一个词砸进画面，跟着节拍。"
+  },
+  "details": {
+    "zh-CN": "适合：情绪爆发、金句、MV 副歌\n分类：A 字\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：情绪爆发、金句、MV 副歌\n分类：A 字\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

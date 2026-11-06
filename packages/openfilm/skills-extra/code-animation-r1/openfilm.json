@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 247,
+  "icon": "film",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "R1 霓虹雨夜 · 电影感",
+    "en": "R1 霓虹雨夜 · 电影感"
+  },
+  "summary": {
+    "zh-CN": "一点透视的雨夜窄街，两边挂满竖招牌，青色的雾越远越浓，街尽头一团暖光；湿地面上的倒影占了半个画面。",
+    "en": "一点透视的雨夜窄街，两边挂满竖招牌，青色的雾越远越浓，街尽头一团暖光；湿地面上的倒影占了半个画面。"
+  },
+  "details": {
+    "zh-CN": "分类：赛博朋克（第一批）\n带来源参考静帧；不代表最终生成效果。",
+    "en": "分类：赛博朋克（第一批）\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

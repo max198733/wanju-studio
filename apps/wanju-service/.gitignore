@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+*.key
+*.sqlite*
+*.log
+.local/
+node_modules/
+downloads/
+backups/

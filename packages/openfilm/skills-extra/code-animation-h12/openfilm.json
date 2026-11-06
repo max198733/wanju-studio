@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 141,
+  "icon": "layers",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "H12 Editorial Forest",
+    "en": "H12 Editorial Forest"
+  },
+  "summary": {
+    "zh-CN": "绿、粉、奶油的杂志配色，衬线标题，细线",
+    "en": "绿、粉、奶油的杂志配色，衬线标题，细线"
+  },
+  "details": {
+    "zh-CN": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

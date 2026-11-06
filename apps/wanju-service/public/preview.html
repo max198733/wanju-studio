@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>玩剧 2.0 · 测试台</title>
+  <style>
+    :root {
+      --ink: #1a1d21; --muted: #6b7280; --line: #e5e7eb; --card: #ffffff;
+      --bg: #f7f8fa; --accent: #2563eb; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+    header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+    h1 { font-size: 22px; margin: 0; letter-spacing: .02em; }
+    .tag { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #e0e7ff; color: #3730a3; }
+    .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 600; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+      font: inherit; background: #fff; color: var(--ink); }
+    textarea { min-height: 76px; resize: vertical; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1 1 180px; }
+    button { cursor: pointer; padding: 9px 18px; border-radius: 8px; border: 1px solid transparent;
+      font: inherit; font-weight: 500; }
+    button.primary { background: var(--accent); color: #fff; }
+    button.primary:disabled { background: #93b0f5; cursor: not-allowed; }
+    button.ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .stat dt { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .stat dd { margin: 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .status { font-size: 13px; margin: 12px 0 0; min-height: 20px; }
+    .status[data-kind="ok"] { color: var(--ok); }
+    .status[data-kind="error"] { color: var(--bad); }
+    .status[data-kind="warn"] { color: var(--warn); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 500; }
+    td.num { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); font-size: 13px; }
+    #shot { max-width: 100%; border-radius: 10px; border: 1px solid var(--line); display: none; margin-top: 12px; }
+    .steps { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+    .steps li { padding: 6px 0; color: var(--muted); }
+    .steps li.done { color: var(--ok); }
+    .steps li.fail { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><h1>玩剧 2.0</h1><span class="tag">本地预览</span></header>
+    <p class="sub">隔离数据库，不影响线上的 0.1.12 和你的正式学员数据。生成会真实调用供应商、真实花钱，一次一张。</p>
+
+    <section class="card">
+      <h2>1 · 进入账号</h2>
+      <div class="row">
+        <div><label>学员账号</label><input id="username" value="demo" autocomplete="username"></div>
+        <div><label>密码</label><input id="password" type="password" value="demo-password-123" autocomplete="current-password"></div>
+        <div style="flex:0 0 auto; display:flex; align-items:flex-end"><button id="login" class="primary">进入</button></div>
+      </div>
+      <p id="login-status" class="status"></p>
+    </section>
+
+    <section class="card" id="account-card" hidden>
+      <h2>2 · 账户与通道</h2>
+      <dl class="stats">
+        <div class="stat"><dt>余额（点）</dt><dd id="balance">—</dd></div>
+        <div class="stat"><dt>冻结中（点）</dt><dd id="held">—</dd></div>
+        <div class="stat"><dt>单张图片定价</dt><dd id="price-image">—</dd></div>
+        <div class="stat"><dt>单段视频定价</dt><dd id="price-video">—</dd></div>
+      </dl>
+      <p class="muted" id="channel-note" style="margin-top:12px"></p>
+    </section>
+
+    <section class="card" id="run-card" hidden>
+      <h2>3 · 试跑一次</h2>
+      <div class="row">
+        <div style="flex:2 1 300px"><label>提示词</label>
+          <textarea id="prompt">水墨风格的山间小院，清晨薄雾，一位老者扫落叶，电影感构图</textarea></div>
+        <div><label>类型</label><select id="category"><option value="image">图片（按张扣点）</option></select></div>
+      </div>
+      <div class="row" style="margin-top:14px; align-items:center">
+        <div style="flex:0 0 auto"><button id="run" class="primary">生成一张</button></div>
+        <div style="flex:0 0 auto"><button id="refresh" class="ghost">刷新余额</button></div>
+        <div style="flex:1 1 auto"><span id="run-hint" class="muted">预计扣 5 点，失败或断网会自动退回或转待核对。</span></div>
+      </div>
+      <p id="run-status" class="status"></p>
+      <img id="shot" alt="生成结果">
+      <ul class="steps" id="steps"></ul>
+    </section>
+
+    <section class="card" id="log-card" hidden>
+      <h2>4 · 账本流水</h2>
+      <table>
+        <thead><tr><th>类型</th><th class="num">变动</th><th class="num">余额</th><th>说明</th><th>时间</th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table>
+      <p class="muted" id="ledger-empty" hidden>还没有流水。</p>
+    </section>
+  </div>
+  <script src="/preview.js"></script>
+</body>
+</html>

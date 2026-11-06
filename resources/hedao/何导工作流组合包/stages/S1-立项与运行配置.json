@@ -1,0 +1,550 @@
+{
+  "skeleton_id": "S1",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "立项与运行配置",
+  "stage_numbers": [
+    1,
+    2
+  ],
+  "purpose": "把项目建起来（目录结构与命名规则）、把运行配置问清写死。本环节之后不再追问引擎/分辨率/时长，也不再改目录命名。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout",
+        "runtime_control",
+        "gate_enforcement"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S1.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [],
+    "out": [
+      {
+        "name": "运行配置",
+        "path": "13-工作流文档/运行配置.json",
+        "schema": "runtime_config",
+        "must_contain": [
+          "video_engine",
+          "advance_mode",
+          "project_style",
+          "target_duration_seconds",
+          "project_resolution"
+        ],
+        "note": "target_duration_seconds 是 S3 时长校验的目标值，缺它 S3 无法开工。"
+      },
+      {
+        "name": "目录结构与命名规则",
+        "path": "项目根（00-故事大纲文档 ~ 13-工作流文档）",
+        "schema": "project_layout",
+        "must_contain": [
+          "13-工作流文档",
+          "01-剧本",
+          "06-分镜",
+          "10-成片"
+        ],
+        "note": "目录与命名按导演要求归 S1；S2 起只按既有目录写，不得自建目录或改名。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_number": 1,
+      "stage_id": "stage_1_installation_initialization",
+      "name": "安装初始化",
+      "purpose": "建立项目目录、准备技能、依赖和配置并执行环境自检。",
+      "required_inputs": [
+        "项目路径",
+        "视频生成引擎（video_engine，启动第一问）",
+        "grok 系列模型选择（grok_video_model，仅 video_engine=grok 时的条件追问）",
+        "seedance 系列选择（seedance_model / seedance_aspect / seedance_resolution，仅 video_engine=seedance 时的三问条件追问）",
+        "推进模式",
+        "项目风格",
+        "项目分辨率（选项随video_engine联动）",
+        "项目内依赖和配置"
+      ],
+      "process": [
+        "启动交互按序询问并写入运行配置：⓪**先问项目形态 project_form**（系列剧集series | 单个短片single_short 二选一，写入运行配置 project_form，是启动阶段的**第一问**）：选择 series 时紧接逐条追问 episode_target_seconds（单集目标多少秒，整数秒）→ planned_episode_count（规划共多少集，正整数）；选择 single_short 时紧接追问 short_film_target_duration_seconds（短片目标时长多少秒，整数秒）；两种形态均把目标时长写入运行配置 target_duration_seconds（series=单集目标时长、single_short=短片目标时长），planned_episode_count 仅 series 写入；**原『一集 120-150 秒』的固定硬要求自 v1.24.33 起废止，禁止以 120／150 或历史项目值兜底**（见 startup_interaction.duration_target_rules）；①**形态与目标时长问答完毕之后**再问视频生成引擎video_engine（H3|wan3.0|grok|seedance四选一，未选默认H3，决定分辨率可选组与stage7路由）；②**条件追问**：仅当①选择H3时，紧接追问 h3_interface_tier（standard_4=4分低价低质量接口 minimax_h3_image_audio_to_video_v2 | high_8=8分高质量接口 minimax_h3_z0903，写入运行配置 h3_interface_tier，并决定第⑤问 h3_resolution 的选项组：standard_4 四档、high_8 六档且取值必须带 (宽*高) 后缀）；仅当①选择grok时，紧接追问 grok_video_model（grok|grok1.5，分别对应接口模型 grok-video 与 grok-video-1.5）；仅当①选择seedance时，紧接按 seedance_model（seedance2.0|seedance2.5 → 接口模型 doubao-seedance-2-0-260128 / doubao-seedance-2-5-260628）→ seedance_aspect（16:9|9:16）→ seedance_resolution（480P|720P|1080P）三问依序追问；上述追问结果一并写入运行配置；未选对应引擎时跳过相应追问、不写对应字段；③推进模式；④项目风格；⑤项目分辨率（选项随video_engine联动，且 grok / seedance 组与 H3/wan3.0 组分开提问：H3项目由 h3_interface_tier 决定档位组（standard_4：768p竖/1080p竖/768p横/1080p横 四选一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 六选一），wan3.0项目=720p竖/1080p竖/720p横/1080p横四选一，grok项目=16:9/9:16二选一且只问画幅比例、quality固定720p、不向用户展示清晰度档位，seedance项目跳过本问、由②中的 seedance_aspect 与 seedance_resolution 两问合成 project_resolution；禁止跨组选值）。",
+        "建立或确认标准目录。",
+        "复制本JSON到13-工作流文档。",
+        "读取项目内配置；缺失时只创建缺失记录，不伪造密钥或接口参数。",
+        "按项目文件夹中的bootstrap.py和requirements.txt安装依赖并自检。"
+      ],
+      "self_checks_count": 13
+    },
+    {
+      "stage_number": 2,
+      "stage_id": "stage_2_directory_and_naming",
+      "name": "目录与命名规则",
+      "purpose": "固定后续产物路径、场次、镜号、资产ID和版本规则。",
+      "required_inputs": [
+        "stage1通过产物",
+        "项目已有目录和命名规则"
+      ],
+      "process": [
+        "读取项目规则",
+        "生成目录映射和唯一ID规则",
+        "建立阶段产物索引",
+        "将目录映射、命名规则和索引写入13-工作流文档",
+        "不得生成剧本、分镜、图片或视频"
+      ],
+      "self_checks_count": 4
+    }
+  ],
+  "stage_policies": {
+    "stage_1_installation_initialization": {
+      "failure_status": "缺输入设paused；可修复问题设needs_revision；不可恢复错误设failed。"
+    },
+    "stage_2_directory_and_naming": {
+      "outputs": [
+        "13-工作流文档/目录映射.json",
+        "13-工作流文档/命名规则.json",
+        "13-工作流文档/阶段产物索引.json"
+      ],
+      "failure_status": "缺输入设paused；可修复问题设needs_revision；不可恢复错误设failed。"
+    }
+  },
+  "interaction": {
+    "startup_interaction": {
+      "required_before_stage_1": true,
+      "ask_discipline": {
+        "purpose": "根治『该问不问、凭记忆自作主张替用户选』：启动询问必须逐条实际提问并等待用户答复。",
+        "must_ask_rule": "下列每一个适用问题都必须真实向用户提问、并等待用户明确答复后才可继续；禁止调用记忆、历史项目配置、上一批次配置或默认值代替提问；禁止自行替用户选择；禁止以『根据以往经验/常规做法』直接填入。",
+        "one_question_per_turn": "一轮只提一题：每次向用户提问，只允许提出 questions 中的**一个**提问项，并在该条消息结束处停下等待用户答复；收到用户明确答复后，才可提出下一个提问项。禁止把两个及以上提问项写进同一条消息、同一张表格或同一道多选题；禁止用『以上请一并确认』『以下N项请逐条回复』『顺便一起确认』等形式一次性收取多个答复。本条与 one_engine_one_question 并行生效：后者管『一题只能装一个引擎的档位』，本条管『一轮只能装一个提问项』。**项目形态、单集目标秒数、规划集数、短片目标时长同样是四个彼此独立的提问项**，必须逐条单独提问并各自等待答复，禁止合并成一题、一张表或一次收取（含『顺便报一下集数和时长』这类合并）。",
+        "no_memory_substitution": "禁止把跨项目记忆中出现的项目形态、目标时长、规划集数、引擎、分辨率、风格、推进模式当作本项目的既定答案；尤其禁止用记忆里的『120-150 秒』兜底目标时长；记忆只能用于提问时的语境说明，不能替代答复。",
+        "one_engine_one_question": "每个引擎的分辨率/画幅必须单独成一题单独提问：H3 只问 H3 的四档，wan3.0 只问 wan3.0 的四档，grok 只问 16:9/9:16，seedance 先问 16:9/9:16 再问 480P/720P/1080P；严禁把两个及以上引擎的档位混进同一题的选项。",
+        "condition_flow_rule": "**先问 project_form（项目形态：系列剧集 series | 单个短片 single_short）**，再据其答案逐条追问：series→episode_target_seconds（单集目标秒数）→planned_episode_count（规划集数）；single_short→short_film_target_duration_seconds（短片目标时长秒数）。**项目形态与目标时长问答完毕后**，才问 video_engine，并据其答案提问：H3→h3_interface_tier→h3_resolution；wan3.0→wan30_resolution；grok→grok_video_model 与 grok_resolution；seedance→seedance_model→seedance_aspect→seedance_resolution。未被选中的引擎问题一律不提问、不写字段。",
+        "default_rule": "仅当用户明确答复「用默认/沿用上次」时才允许采用 default_if_no_answer 值，并在运行配置 mode_history 追加『用户显式授权默认值』记录；未获授权时禁止填入默认值。",
+        "no_answer_behavior": "用户未答复前不得开始 stage1、不得写入运行配置、不得生成任何产物；记为 paused 并等待。",
+        "forbidden": [
+          "凭记忆或历史项目直接填入引擎/模型/分辨率/风格",
+          "自行替用户选择或『帮用户先选一个』",
+          "把 H3 与 wan3.0（或其他引擎）的分辨率档位放在同一题里问",
+          "跳过条件追问（grok_video_model / seedance 三问 / h3_interface_tier）",
+          "未获用户答复即开始 stage1",
+          "把两个及以上启动问题合并到同一次提问里（含一条消息内列多题、用一道多选题覆盖多问、要求用户一次性逐条回复）",
+          "跳过首问（未问项目形态 project_form 就先问 video_engine），或未问出目标时长、未写入运行配置 target_duration_seconds 就开始 stage1",
+          "把项目形态、单集目标秒数、规划集数、短片目标时长合并到同一题里问；或自行替导演填一个目标时长／集数"
+        ],
+        "violation_handling": "违反任一条：该次启动无效，必须清空已写入的运行配置相关字段后重新逐条提问；并在阶段状态.json 记录 start_interaction_violation。"
+      },
+      "questions": [
+        {
+          "id": "project_form",
+          "question": "本项目做『系列剧集』还是『单个短片』？（**启动第一问**：先于 video_engine、分辨率等全部问题询问且必须实际提问；选择『系列剧集』后紧接逐条追问单集目标多少秒、规划共多少集；选择『单个短片』后紧接追问短片目标时长多少秒。本题不得与时长、集数、引擎、分辨率问题合并）",
+          "options": {
+            "剧集": "系列剧集：本项目按『单集目标时长 + 规划集数』立项——先定单集目标秒数、再定计划做多少集。（写入运行配置的值：series）",
+            "单个短片": "单个短片：本项目只做一条独立短片，不按剧集立项，只定短片目标时长秒数。（写入运行配置的值：single_short）"
+          },
+          "options_note": "选项标签为中文，向导演展示时直接使用；助手写运行配置时取说明栏括号内的内部值（系列剧集→series、单个短片→single_short），禁止把中文标签写进配置，也禁止把 series / single_short 当选项名展示。",
+          "ask_timing": "启动第一问：在 video_engine 之前询问，是 questions 数组中排最前的提问项；必须实际提问并等待答复",
+          "writes_to": "运行配置.json 的 project_form（series | single_short）",
+          "default_if_no_answer": null,
+          "required": true,
+          "downstream_effect": "决定紧随其后的条件追问（project_form=series → episode_target_seconds、planned_episode_count；project_form=single_short → short_film_target_duration_seconds），并决定 stage4 总时长校验的目标值来源（运行配置 target_duration_seconds，容差 ±15 秒，见 duration_target_rules）。"
+        },
+        {
+          "id": "episode_target_seconds",
+          "question": "【条件追问·仅在 project_form=series 时询问】本项目单集目标时长多少秒？（由导演直接填一个整数秒数，作为 stage4 单集总时长校验的目标值；原固定的『一集 120-150 秒』自 v1.24.33 起废止，不再提供任何默认档位）",
+          "answer_type": "integer_seconds",
+          "options": "本题为数值输入题，无预置档位：必须由导演填报整数秒数；助手不得自行填 120／150 或历史项目值，也不得把本项与集数问题合并成一题。",
+          "ask_condition": "project_form=series（project_form=single_short 时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 project_form 之后、planned_episode_count 之前询问（series 项目的第一个条件追问）",
+          "writes_to": "运行配置.json 的 target_duration_seconds（整数秒；同时以 episode_target_seconds 记录原值）；project_form=series 时二者同值",
+          "default_if_no_answer": null,
+          "required_if": "project_form=series 时必填",
+          "downstream_effect": "stage3 剧本按该时长创作；stage4 总时长闸门（STG4-C8）以该值为目标、容差 ±15 秒判定。"
+        },
+        {
+          "id": "planned_episode_count",
+          "question": "【条件追问·仅在 project_form=series 时询问】本项目规划做多少集？（由导演填一个正整数，登记进运行配置作为项目规划）",
+          "answer_type": "positive_integer",
+          "options": "本题为数值输入题，无预置档位：必须由导演填报正整数；禁止助手自行填 1 或历史项目值。",
+          "ask_condition": "project_form=series（project_form=single_short 时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 episode_target_seconds 之后询问（series 项目的第二个条件追问）",
+          "writes_to": "运行配置.json 的 planned_episode_count（正整数）",
+          "default_if_no_answer": null,
+          "required_if": "project_form=series 时必填",
+          "downstream_effect": "仅作项目规划登记（与单集目标时长一并记录），**不改变流程粒度**——本工作流一次仍只产出一集（一个项目=一集），多集须逐集立项；stage4 仍按单集判定总时长。"
+        },
+        {
+          "id": "short_film_target_duration_seconds",
+          "question": "【条件追问·仅在 project_form=single_short 时询问】本项目这条短片的目标时长多少秒？（由导演直接填一个整数秒数，作为 stage4 整片总时长校验的目标值；不提供预置档位）",
+          "answer_type": "integer_seconds",
+          "options": "本题为数值输入题，无预置档位：必须由导演填报整数秒数；禁止助手自行填 120／150 或历史项目值。",
+          "ask_condition": "project_form=single_short（project_form=series 时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 project_form 之后询问（single_short 项目的唯一条件追问；本项完成后即进入 video_engine 提问）",
+          "writes_to": "运行配置.json 的 target_duration_seconds（整数秒；同时以 short_film_target_duration_seconds 记录原值）",
+          "default_if_no_answer": null,
+          "required_if": "project_form=single_short 时必填",
+          "downstream_effect": "stage3 剧本按该时长创作；stage4 总时长闸门（STG4-C8）以该值为目标、容差 ±15 秒判定（整片判定，不按集拆分）。"
+        },
+        {
+          "id": "video_engine",
+          "question": "本项目视频生成使用哪个接口引擎？（在 project_form 与目标时长的问答完成之后询问，是启动阶段引擎环节的第一问；H3、wan3.0、grok、seedance 四个接口互不覆盖，stage7 按该选择路由；选择 grok 立即触发 grok_video_model 条件追问，选择 seedance 立即触发 seedance_model→seedance_aspect→seedance_resolution 三问条件追问；本题不得与分辨率问题合并）",
+          "options": {
+            "H3": "AutoDL ComfyUI MiniMax-H3（minimax_h3_image_audio_to_video_v2，多图多音频多参生成，ref_image+ref_audio）",
+            "wan3.0": "通义万相 Wan3.0（AutoDL ali代理 video-synthesis 接口，文生/图生视频，单分镜图参考驱动）",
+            "grok": "多米API Grok 视频（duomiapi.com /v1/videos/generations，grok 系列：grok-video / grok-video-1.5，图生视频单图或多图参考，分辨率仅 720P）",
+            "seedance": "火山引擎方舟 Seedance 系列（ark.cn-beijing.volces.com /api/v3/contents/generations/tasks，多模态参考生成，模型 doubao-seedance-2-0-260128 / doubao-seedance-2-5-260628，画幅 16:9 或 9:16，分辨率 480P/720P/1080P）"
+          },
+          "default_if_no_answer": "H3",
+          "required": true
+        },
+        {
+          "id": "h3_interface_tier",
+          "question": "【条件追问·仅在 video_engine=H3 时询问】本项目 H3 视频生成使用哪个接口档位？（两个选项：4分低价档 / 8分高质量档；两档单价与产出质量不同，全项目锁定）",
+          "options": {
+            "4分低价档": "4分低价低质量接口：原接口 minimax_h3_image_audio_to_video_v2，单价低、产出质量较低，分辨率沿用旧四档（768p竖 / 1080p竖 / 768p横 / 1080p横）。（写入运行配置的值：standard_4）",
+            "8分高质量档": "8分高质量接口：新接口 minimax_h3_z0903，单价高、产出质量更高，分辨率六档且取值必须带 (宽*高) 后缀（768p竖(768*1376) / 768p横(1376*768) / 1088p竖(1088*1920) / 1088p横(1920*1088) / 1440p竖(1440*2560) / 1440p横(2560*1440)）。（写入运行配置的值：high_8）"
+          },
+          "ask_condition": "video_engine=H3（video_engine为wan3.0/grok/seedance时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 video_engine 之后、advance_mode 之前询问（H3 项目的第一个条件追问；必须实际提问并等待答复）",
+          "writes_to": "运行配置.json 的 h3_interface_tier（standard_4 | high_8）",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=H3 时必填；其他引擎不适用",
+          "downstream_effect": "决定三件事：①stage7 请求端点（standard_4→POST /api/v1/comfyui/comfyui_workflow/minimax_h3_image_audio_to_video_v2；high_8→POST /api/v1/comfyui/comfyui_workflow/minimax_h3_z0903，两者查询端点同为 /result/{task_id}）；②h3_resolution 的选项组（standard_4 四档；high_8 六档且取值必须带 (宽*高) 后缀）；③high_8 的分辨率字符串必须原样写入请求参数 resolution 与提示词最上方追溯行，不得改写成 768p横 这类无后缀写法。",
+          "high_8_notes": [
+            "取值必须完整带 (宽*高)：如 768p横(1376*768)。写成 768p横 或 768p横屏 或 768p横（1376*768）(全角括号) 都会被接口以『参数: resolution 的值: XXX 不在 options 列表中』拒收。",
+            "实测该端点存在不稳定：任务状态会在 QUEUED/RUNNING 之间反复回跳，且偶发直接 FAILED；轮询与提交必须内置重试（建议提交重试≥3、轮询超时≥30分钟）。",
+            "分辨率实际输出与请求一致（high_8 的 768p横(1376*768) 实测输出 1376x768；standard_4 的 768p横 实测输出 1344x768）。"
+          ],
+          "options_note": "选项标签为中文，向导演展示时直接使用；助手写运行配置时取说明栏括号内的内部值（4分低价档→standard_4、8分高质量档→high_8），禁止把中文标签写进配置，也禁止把 standard_4 / high_8 当选项名展示。"
+        },
+        {
+          "id": "grok_video_model",
+          "question": "【条件追问·仅在 video_engine=grok 时询问】已选择 grok 系列，本片使用哪个 grok 视频模型？（两个选项分别对应多米API接口里的两个模型：grok-video 与 grok-video-1.5）",
+          "options": {
+            "grok": "grok-video（基础版，接口模型名 grok-video，分辨率仅 720P，按秒计费）",
+            "grok1.5": "grok-video-1.5（1.5版，接口模型名 grok-video-1.5，分辨率仅 720P，按秒计费）"
+          },
+          "ask_condition": "video_engine=grok（video_engine为H3/wan3.0/seedance时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 video_engine 之后、advance_mode 之前询问",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=grok 时必填；其他引擎不适用"
+        },
+        {
+          "id": "seedance_model",
+          "question": "【条件追问·仅在 video_engine=seedance 时询问】已选择 Seedance 系列，使用哪个 Seedance 模型？（两选项分别对应火山方舟接口的两个模型 ID）",
+          "options": {
+            "seedance2.0": "Seedance 2.0（接口模型 ID doubao-seedance-2-0-260128；时长 4-15 秒；分辨率 480p/720p/1080p/4k，本项目按 480P/720P/1080P 三选一）",
+            "seedance2.5": "Seedance 2.5（接口模型 ID doubao-seedance-2-5-260628；时长 4-30 秒；分辨率 480p/720p/1080p；支持最多 50 个多模态参考素材）"
+          },
+          "ask_condition": "video_engine=seedance（video_engine为H3/wan3.0/grok时禁止询问、禁止写入该字段）",
+          "ask_timing": "紧跟 video_engine 之后（若同时选了grok则与grok追问互斥，同一项目只会出现其一）",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=seedance 时必填；其他引擎不适用"
+        },
+        {
+          "id": "seedance_aspect",
+          "question": "【条件追问·仅在 video_engine=seedance 时询问】本片画幅比例？16:9（横屏）还是 9:16（竖屏）",
+          "options": {
+            "16:9": "横屏 16:9",
+            "9:16": "竖屏 9:16"
+          },
+          "ask_condition": "video_engine=seedance（其他引擎禁止询问）",
+          "ask_timing": "紧跟 seedance_model 之后、seedance_resolution 之前询问",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=seedance 时必填"
+        },
+        {
+          "id": "seedance_resolution",
+          "question": "【条件追问·仅在 video_engine=seedance 时询问】本片分辨率？480P / 720P / 1080P",
+          "options": {
+            "480P": "480p（成本最低）",
+            "720P": "720p（接口默认档）",
+            "1080P": "1080p（成本最高）"
+          },
+          "ask_condition": "video_engine=seedance（其他引擎禁止询问）",
+          "ask_timing": "紧跟 seedance_aspect 之后询问（本项完成即代表 seedance 项目的分辨率环节结束，不再询问通用 project_resolution）",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=seedance 时必填"
+        },
+        {
+          "id": "advance_mode",
+          "question": "本次整体工作后续阶段如何推进？（三个选项：自动全程推进 / 手动逐阶段确认 / 图册半自动——前面自动跑到 6.6 图册，等你看完图册确认后再出视频）",
+          "options": {
+            "自动": "全程自动推进：每阶段通过自检后自动进入下一阶段；关键输入缺失、自检不通过或生成失败时暂停。（写入运行配置的值：auto）",
+            "手动": "逐阶段手动确认：每阶段通过自检后暂停，等待用户明确要求进入下一阶段。（写入运行配置的值：manual）",
+            "图册半自动": "前面自动跑到 6.6 图册，等你看完图册确认后再出视频：stage1 至 stage6.6 按自动规则逐阶段推进（自检通过即自动进入下一阶段）；stage6.6 分镜图册生成交付后暂停进入图册审阅闸门（album_review_gate），等你看完图册并确认无问题后，再继续 stage7 视频生成；放行后 stage7 与 stage8 按自动规则推进，stage8 用户确认无镜头需要修改后整体完成。（图册审阅闸门实体定义见 stage_workflow(7).album_review_gate）（写入运行配置的值：album_semiauto）"
+          },
+          "default_if_no_answer": "manual",
+          "options_note": "选项标签为中文，向导演展示时直接使用；助手写运行配置时取说明栏括号内的内部值（自动→auto、手动→manual、图册半自动→album_semiauto），禁止把中文标签写进配置，也禁止把英文内部值当选项名展示。"
+        },
+        {
+          "id": "project_style",
+          "question": "本项目使用什么风格？（询问完推进模式后立即询问；风格决定stage5资产生图与stage6分镜图的风格前缀，写入05-风格项目风格配置）",
+          "options": {
+            "电影级写实真人漫剧风": "真人动捕级动态、真实皮肤服饰材质、电影级写实调色",
+            "3D动漫漫剧风": "3D卡通渲染、三渲二质感、干净流畅模型轮廓",
+            "2D日漫风": "日系动漫线条与上色，含少年热血/少女治愈/暗黑悬疑等分支"
+          },
+          "default_if_no_answer": null,
+          "required": true
+        },
+        {
+          "id": "h3_resolution",
+          "question": "【条件追问·仅在 video_engine=H3 时询问】本项目 H3 视频生成使用哪个分辨率？（选项随 h3_interface_tier 联动：standard_4 四选一；high_8 六选一。全项目锁定）",
+          "options_by_tier": {
+            "standard_4": {
+              "768p竖": "竖屏 768p",
+              "1080p竖": "竖屏 1080p",
+              "768p横": "横屏 768p",
+              "1080p横": "横屏 1080p"
+            },
+            "high_8": {
+              "768p竖(768*1376)": "竖屏 768p（768×1376）",
+              "768p横(1376*768)": "横屏 768p（1376×768）",
+              "1088p竖(1088*1920)": "竖屏 1088p（1088×1920）",
+              "1088p横(1920*1088)": "横屏 1088p（1920×1088）",
+              "1440p竖(1440*2560)": "竖屏 1440p（1440×2560）",
+              "1440p横(2560*1440)": "横屏 1440p（2560×1440）"
+            }
+          },
+          "options_note": "提问前必须先读取已锁定的 h3_interface_tier，只展示该档位对应的那一组选项；high_8 档的取值必须原样采用带 (宽*高) 后缀的完整字符串，禁止简写成 768p横。",
+          "ask_condition": "video_engine=H3（其他引擎禁止询问本问；本题选项只能来自当前 h3_interface_tier 对应组，禁止混入另一档的值，也禁止混入 wan3.0 的 720p* 或 grok/seedance 的画幅档）",
+          "ask_timing": "在 project_style 之后、作为分辨率环节的唯一一问（H3 项目）",
+          "writes_to": "运行配置.json 的 project_resolution（原值写入：standard_4 如 1080p横；high_8 如 768p横(1376*768)）",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=H3 时必填"
+        },
+        {
+          "id": "wan30_resolution",
+          "question": "【条件追问·仅在 video_engine=wan3.0 时询问】本项目 Wan3.0 视频生成使用哪个分辨率？（wan3.0 专属分辨率组，四选一，全项目锁定）",
+          "options": {
+            "720p竖": "竖屏 720p",
+            "1080p竖": "竖屏 1080p",
+            "720p横": "横屏 720p",
+            "1080p横": "横屏 1080p"
+          },
+          "ask_condition": "video_engine=wan3.0（其他引擎禁止询问本问；本题选项只能是 wan3.0 的四档，禁止混入 H3 的 768p*）",
+          "ask_timing": "在 project_style 之后、作为分辨率环节的唯一一问（wan3.0 项目）",
+          "writes_to": "运行配置.json 的 project_resolution（原值写入）",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=wan3.0 时必填"
+        },
+        {
+          "id": "grok_resolution",
+          "question": "【条件追问·仅在 video_engine=grok 时询问】本项目 grok 视频使用哪个画幅比例？16:9 还是 9:16（grok 系列仅 720P，故只问画幅、不问清晰度）",
+          "options": {
+            "16:9": "横屏 16:9（质量固定 720p）",
+            "9:16": "竖屏 9:16（质量固定 720p）"
+          },
+          "ask_condition": "video_engine=grok（其他引擎禁止询问本问；题干与选项不得出现 768p/480P/1080P 等清晰度档位）",
+          "ask_timing": "在 project_style 之后、作为分辨率环节的唯一一问（grok 项目）",
+          "writes_to": "运行配置.json 的 project_resolution（写入 \"16:9\" 或 \"9:16\"）；stage7 映射为请求体 aspect_ratio 并固定 quality=720p",
+          "default_if_no_answer": null,
+          "required_if": "video_engine=grok 时必填"
+        }
+      ],
+      "resolution_rules": {
+        "write_target": "无论哪个引擎，分辨率/画幅最终统一写入运行配置.json 的 project_resolution（全项目锁定）；stage7 生成视频提示词与视频请求参数时必须读取该值。",
+        "per_engine_question_map": {
+          "H3": "h3_interface_tier（standard_4 4分低价 | high_8 8分高质量 二选一）→ h3_resolution（standard_4：768p竖/1080p竖/768p横/1080p横 四选一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 六选一，取值必须带 (宽*高) 后缀）",
+          "wan3.0": "wan30_resolution（720p竖 / 1080p竖 / 720p横 / 1080p横 四选一）",
+          "grok": "grok_resolution（16:9 / 9:16 二选一，quality 固定 720p）",
+          "seedance": "seedance_aspect（16:9 / 9:16）→ seedance_resolution（480P / 720P / 1080P），两问合成「{aspect}·{resolution}」"
+        },
+        "no_mixing_rule": "严禁把两个及以上引擎的分辨率/画幅档位写进同一个问题的选项里（历史问题：曾把 H3 与 wan3.0 的分辨率混在同一问中提问）。每个引擎的分辨率必须独立成题、独立提问，且只在该引擎被选中时提问；其余引擎的档位不得出现在题干或选项中。",
+        "cross_group_ban": "禁止跨组选值：H3 项目不得出现 720p*；wan3.0 项目不得出现 768p*/1088p*/1440p*；grok 项目不得出现任何清晰度档位；seedance 项目清晰度只取 480P/720P/1080P，且必须先定画幅再定清晰度。H3 内部还须分档：standard_4 档只在 768p竖/1080p竖/768p横/1080p横 内取值，high_8 档只在 768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 内取值，两档取值不得互串；high_8 档禁止使用无 (宽*高) 后缀的简写值。",
+        "ask_order": "project_form → 形态条件追问（series：episode_target_seconds→planned_episode_count；single_short：short_film_target_duration_seconds）→ video_engine → 引擎条件追问（H3：h3_interface_tier；grok：grok_video_model；seedance：seedance_model→seedance_aspect→seedance_resolution）→ advance_mode → project_style → 分辨率（按引擎单选一问；H3 的选项组由 h3_interface_tier 决定；seedance 的两问已在条件追问阶段完成，不再重复提问）。"
+      },
+      "config_file": "13-工作流文档/运行配置.json",
+      "config_storage": "project_form（series | single_short）、target_duration_seconds（整数秒——series=单集目标时长、single_short=短片目标时长）、planned_episode_count（正整数，仅 series）、video_engine、advance_mode、project_style、project_resolution 均写入运行配置.json；**全部启动问题必须逐条实际提问并等待答复后写入（见 ask_discipline）**。video_engine为启动第一问（H3|wan3.0|grok|seedance四选一）；选择H3时先按 h3_interface_tier 条件追问确定 4分低价接口还是 8分高质量接口（写入运行配置 h3_interface_tier），再据该档位提问 h3_resolution；选择grok时按 grok_video_model 条件追问确定 grok-video 或 grok-video-1.5；选择seedance时按 seedance_model→seedance_aspect→seedance_resolution 三问依序追问；分辨率按引擎单独提问：H3用 h3_resolution、wan3.0用 wan30_resolution、grok用 grok_resolution，seedance由 seedance_aspect+seedance_resolution 合成；上述条件追问与分辨率结果一并写入运行配置，非对应引擎的项目不写该字段（见 resolution_rules）。stage7读取video_engine自动路由：H3走api_integration.video_api（AutoDL ComfyUI MiniMax-H3），wan3.0走api_integration.video_api_wan3_0（通义万相Wan3.0），grok走api_integration.video_api_grok（多米API Grok 视频，接口模型名由grok_video_model决定：grok→grok-video、grok1.5→grok-video-1.5），seedance走api_integration.video_api_seedance（火山引擎方舟 Seedance 系列，接口模型 ID 由seedance_model决定：seedance2.0→doubao-seedance-2-0-260128、seedance2.5→doubao-seedance-2-5-260628），四个接口配置与规则互不覆盖；project_resolution全项目锁定：H3接口按 h3_interface_tier 分档（standard_4=4分低价接口：768p竖/1080p竖/768p横/1080p横 四选一；high_8=8分高质量接口：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 六选一，取值必须带 (宽*高) 后缀），wan3.0=720p竖/1080p竖/720p横/1080p横四选一，grok=16:9/9:16二选一（quality固定720p），seedance=「{aspect}·{resolution}」；stage7生成视频提示词与视频请求分辨率参数时必须读取该项目配置值，把分辨率写入提示词　【v1.24.33】启动**第一问为项目形态 project_form**（系列剧集 / 单个短片二选一），据其答案逐条追问目标时长与规划集数，再问 video_engine；原『一集 120-150 秒』固定硬要求已废止，改为按 target_duration_seconds 目标值判定（容差 ±15 秒）；target_duration_seconds 缺失的项目不得开始 stage4（见 duration_target_rules）。",
+      "option_display_rule": "启动问题向导演展示时，选项标签一律以中文呈现（中文在前、一眼可懂）；每个选项的内部取值必须在其说明栏内用『（写入运行配置的值：xxx）』写明，供助手写运行配置时原样采用。例外：当选项键本身就是必须原样写入运行配置的取值时（分辨率如 768p横(1376*768) / 1088p竖(1088*1920)，画幅如 16:9 / 9:16，清晰度如 480P / 720P / 1080P），保留该取值原文作为选项标签，并在说明栏补中文解释——此类取值禁止改写、禁止翻译、禁止简写、禁止加空格。禁止把 auto / manual / album_semiauto / standard_4 / high_8 / series / single_short 这类内部英文取值作为选项名展示给导演（项目形态一律展示为『系列剧集 / 单个短片』）；禁止以『选项名与配置值同名才好写』为由保留英文选项。",
+      "duration_target_rules": {
+        "write_target": "项目形态与目标时长统一写入运行配置.json：project_form（series | single_short）、target_duration_seconds（整数秒——series 为单集目标时长、single_short 为短片目标时长）、planned_episode_count（正整数，仅 series 写入；另按分支以 episode_target_seconds / short_film_target_duration_seconds 记录原值）。stage4 计算与校验总时长时必须以 target_duration_seconds 为目标值。",
+        "tolerance_seconds": 15,
+        "verdict_rule": "stage4 总时长判定（STG4-C8）：实际总时长落在 target_duration_seconds ± 15 秒内即 PASS；超出容差即本集/本片不合格，标记 needs_revision 并重新拆分或调整镜头时长；确需放行时只允许用 --allow-total-duration-override 声明导演豁免（按 gate_enforcement.severity_policy 记 WARNING 放行）。",
+        "scope_rule": "project_form=series 时按单集判定（镜号按 S0x_NN 的场次前缀分组求和，组间细节镜计入所在集）；project_form=single_short 时按整片判定。两形态共用同一 target_duration_seconds 字段，互不覆盖。",
+        "legacy_ban": "自 v1.24.33 起，固定的『一集 120-150 秒』硬要求废止：全包不得再以 120／150 作为默认、兜底或示例目标时长，也不得用历史项目值代替提问；目标时长一律来自启动首问填报的运行配置值。",
+        "missing_answer_rule": "项目形态与目标时长为必答项（series 还须答规划集数）；未获答复前不得开始 stage1、不得写入运行配置、不得生成任何产物；运行配置缺少 target_duration_seconds 的项目不得开始 stage4（STG4-C8 直接判 FAIL）。"
+      }
+    },
+    "runtime_commands": {
+      "purpose": "允许用户在工作流运行中修改推进方式。",
+      "commands": {
+        "切换为自动推进": "将运行配置中的advance_mode改为auto。当前阶段继续执行；当前阶段通过自检后自动推进。",
+        "切换为手动推进": "将运行配置中的advance_mode改为manual。当前阶段继续执行；当前阶段通过自检后暂停。",
+        "切换为图册半自动推进": "将运行配置中的advance_mode改为album_semiauto。当前阶段继续执行；stage1至stage6.6按自动规则推进（自检通过自动进入下一阶段），stage6.6分镜图册交付后暂停进入图册审阅闸门，等待用户确认图册无问题后再继续stage7。（图册审阅闸门实体定义见 stage_workflow(7).album_review_gate）",
+        "查看当前推进模式": "读取并报告运行配置中的advance_mode及最近修改记录。",
+        "暂停工作流": "将workflow_control设为paused；已被API受理的任务继续记录状态，但不启动新阶段或新任务。",
+        "继续工作流": "将workflow_control设为running，从阶段状态记录的current_stage继续。",
+        "切换视频引擎": "更换项目视频引擎 / H3 接口档位 / grok 或 seedance 型号。导演可用短号（如『换成1B』『换成2』）或口语描述指定；助手按 engine_alias_map 解析、复述当前值与解析结果、列出 engine_switch_rule.impact_list 全部影响项，等导演明确确认后才更新运行配置对应字段并把 advance 记录写入 mode_history。"
+      },
+      "update_process": [
+        "读取13-工作流文档/运行配置.json。",
+        "验证用户控制指令。",
+        "更新advance_mode或workflow_control。",
+        "追加mode_history记录，不覆盖历史记录。",
+        "同步更新13-工作流文档/阶段状态.json中的推进模式和next_action。",
+        "6) 若控制指令涉及更换视频引擎/档位/型号：按 engine_alias_map 解析导演表述（短号或口语），先复述运行配置当前值与解析结果，再完整列出 engine_switch_rule.impact_list 影响清单，等导演明确确认后才更新 video_engine / h3_interface_tier / grok_video_model / seedance_model 并追加 mode_history（note=中途更换，原值→新值）；受影响阶段记 needs_revision 并写明 invalidated_by=引擎变更。"
+      ]
+    },
+    "refs_index": {
+      "file": "core/01-support.json",
+      "field": "refs",
+      "read": "建项目时读一次，认下 skills/ api/ standards/ 的路径与用途；之后用到哪个再按路径读，不要预读正文。"
+    }
+  },
+  "self_checks": {
+    "count": 17,
+    "items": [
+      {
+        "id": "stage_1_installation_initialization#0",
+        "text": "启动询问已按 startup_interaction.ask_discipline 逐条实际提问并记录用户答复（**首问为 project_form 项目形态：系列剧集 / 单个短片**；project_form=series 时已追问答出单集目标秒数 episode_target_seconds 与规划集数 planned_episode_count、project_form=single_short 时已追问答出短片目标时长 short_film_target_duration_seconds；目标时长已写入运行配置 target_duration_seconds、规划集数已写入 planned_episode_count，且未以 120／150 或历史项目值兜底）；无凭记忆/历史项目/默认值代替提问、无替用户自选、无未答复即开始stage1的情形",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#1",
+        "text": "分辨率按引擎独立成题提问：H3仅问H3四档、wan3.0仅问wan3.0四档、grok仅问16:9/9:16、seedance按aspect→resolution两问；无任何两引擎档位混入同一题的情形（符合 resolution_rules.no_mixing_rule）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#2",
+        "text": "推进模式已记录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#3",
+        "text": "项目风格已记录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#4",
+        "text": "项目分辨率已记录",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#5",
+        "text": "标准目录存在且可写",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#6",
+        "text": "项目脚本和配置可定位",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#7",
+        "text": "API Key未进入公开文件",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#8",
+        "text": "未引入工作流外资料",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#9",
+        "text": "视频生成引擎video_engine已记录（H3|wan3.0|grok|seedance）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#10",
+        "text": "video_engine=grok时 grok_video_model 已记录（grok|grok1.5），并已对应接口模型 grok-video / grok-video-1.5；video_engine非grok时该字段未写入运行配置",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#11",
+        "text": "video_engine=seedance时 seedance_model（seedance2.0|seedance2.5）、seedance_aspect（16:9|9:16）、seedance_resolution（480P|720P|1080P）三问结果均已记录，并已合成写入 project_resolution（{aspect}·{resolution}）；video_engine非seedance时上述三字段未写入运行配置、且未误问通用 project_resolution",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_1_installation_initialization#12",
+        "text": "启动问题向导演展示的选项标签均为中文（符合 startup_interaction.option_display_rule）：工作模式展示为『自动 / 手动 / 图册半自动』、H3 接口档位展示为『4分低价档 / 8分高质量档』，未出现以 auto / manual / album_semiauto / standard_4 / high_8 作为选项名展示的情形；分辨率/画幅/清晰度等必须原样写入配置的取值保留原文并已补中文解释；写入运行配置的值仍为内部英文值",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_2_directory_and_naming#0",
+        "text": "目录覆盖全部工作流阶段",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_2_directory_and_naming#1",
+        "text": "命名规则无冲突",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_2_directory_and_naming#2",
+        "text": "ID唯一可追溯",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_2_directory_and_naming#3",
+        "text": "没有新增用户未要求的生产阶段",
+        "p0": false,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [],
+    "full_film_ids": [],
+    "p0_count": 0,
+    "full_film_count": 0,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [],
+  "skills_hint": [],
+  "api_hint": [],
+  "size_bytes": 47657
+}

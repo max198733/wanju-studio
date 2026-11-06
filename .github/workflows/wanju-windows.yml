@@ -1,0 +1,121 @@
+name: Wanju Windows build
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Wanju version, for example 2.1.0
+        type: string
+        default: '2.1.0'
+        required: true
+      signing:
+        description: SignPath requires prior Foundation approval and configured credentials
+        type: choice
+        options: [none, signpath]
+        default: none
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: wanju-windows-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: windows-2025
+    timeout-minutes: 120
+    environment: wanju-release
+    env:
+      WANJU_VERSION: ${{ inputs.version }}
+      WANJU_SIGNING: ${{ inputs.signing }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+      SIGNPATH_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+      WANJU_SIGN_EXPECTED_SUBJECT: ${{ vars.WANJU_SIGN_EXPECTED_SUBJECT }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate release input before using it in paths
+        shell: pwsh
+        run: |
+          if ($env:WANJU_VERSION -notmatch '^\d+\.\d+\.\d+(-[a-z0-9]+([.-][a-z0-9]+)*)?$') { throw 'Invalid version.' }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.19.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/wanju-ci-tools.ps1
+      - run: node --test apps/desktop/scripts/wanju-release-options.test.mjs apps/desktop/scripts/wanju-signing.test.mjs scripts/wanju-public-source.test.mjs
+      - run: pnpm typecheck
+      - name: Check out the pinned SignPath submission implementation
+        if: inputs.signing == 'signpath'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: SignPath/github-action-submit-signing-request
+          ref: f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+          path: .local/signpath-action
+          persist-credentials: false
+      - name: Build, optionally requesting approved signatures
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          $env:SIGNPATH_ACTION_DIRECTORY = Join-Path $env:GITHUB_WORKSPACE '.local/signpath-action'
+          node apps/desktop/scripts/release-wanju.mjs "--version=$env:WANJU_VERSION" "--signing=$env:WANJU_SIGNING" --output=.local/release-out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify application, installer and uninstaller before preparing release metadata
+        shell: pwsh
+        run: |
+          $args = @('scripts/wanju-release-manifest.mjs', '--directory=.local/release-out', "--version=$env:WANJU_VERSION")
+          if ($env:WANJU_SIGNING -eq 'signpath') { $args += '--require-signed' }
+          node @args
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep the installer and verification report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wanju-${{ inputs.version }}-${{ inputs.signing }}
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: true
+          path: |
+            .local/release-out/*.exe
+            .local/release-out/SHA256SUMS.txt
+            .local/release-out/release-manifest.json
+      - name: Preserve the code-signing evidence
+        if: inputs.signing == 'signpath'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wanju-signing-report-${{ inputs.version }}
+          path: .local/desktop-release.json
+          if-no-files-found: error
+          include-hidden-files: true
+  draft:
+    needs: build
+    if: inputs.signing == 'signpath'
+    runs-on: ubuntu-24.04
+    environment: wanju-release
+    permissions:
+      contents: write
+      actions: read
+    env:
+      WANJU_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: wanju-${{ inputs.version }}-signpath
+          path: signed
+      - name: Create a new signed draft without overwriting a published release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="wanju-v$WANJU_VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::The release already exists; refusing to overwrite it."
+            exit 1
+          fi
+          gh release create "$tag" signed/* --draft --target "$GITHUB_SHA" --title "Wanju $WANJU_VERSION" --notes "Signed Windows x64 build. See the attached signing metadata and SHA256SUMS.txt."

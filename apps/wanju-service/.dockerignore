@@ -1,0 +1,16 @@
+node_modules
+downloads
+backups
+.local
+work
+*.sqlite*
+*.log
+*.test.mjs
+README.md
+.git
+.env
+.env.*
+*.key
+*.zip
+*.exe
+*.tgz

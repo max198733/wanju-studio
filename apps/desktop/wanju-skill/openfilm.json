@@ -1,0 +1,6 @@
+{
+  "version": "0.1.11",
+  "kind": "workflow",
+  "title": { "zh-CN": "何导短剧工作流", "en": "Hedao Short Drama" },
+  "summary": { "zh-CN": "剧本、人物场景道具、分镜审核、视频生成与剪辑交付。", "en": "Script, continuity assets, storyboard review, video generation and editing." }
+}

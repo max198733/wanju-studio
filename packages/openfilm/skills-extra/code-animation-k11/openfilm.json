@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 87,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K11 手账笔记",
+    "en": "K11 手账笔记"
+  },
+  "summary": {
+    "zh-CN": "像学生笔记，有勾画、有便利贴",
+    "en": "像学生笔记，有勾画、有便利贴"
+  },
+  "details": {
+    "zh-CN": "适合：列方法、列步骤\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：列方法、列步骤\n分类：画面风格\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

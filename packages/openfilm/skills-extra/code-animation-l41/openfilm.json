@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 182,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L41 等距信息图",
+    "en": "L41 等距信息图"
+  },
+  "summary": {
+    "zh-CN": "一杯咖啡从种植园到你手里的旅程。",
+    "en": "一杯咖啡从种植园到你手里的旅程。"
+  },
+  "details": {
+    "zh-CN": "适合：一个小世界、一套流程\n分类：信息与发布\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：一个小世界、一套流程\n分类：信息与发布\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

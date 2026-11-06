@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 73,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M37 Logo 慢慢拼出来（片头片尾）",
+    "en": "M37 Logo 慢慢拼出来（片头片尾）"
+  },
+  "summary": {
+    "zh-CN": "碎片慢慢聚拢，拼成 logo。",
+    "en": "碎片慢慢聚拢，拼成 logo。"
+  },
+  "details": {
+    "zh-CN": "适合：每期的片头或片尾，做一次以后反复用。\n分类：结构和镜头类（用来把不同风格串起来）\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：每期的片头或片尾，做一次以后反复用。\n分类：结构和镜头类（用来把不同风格串起来）\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

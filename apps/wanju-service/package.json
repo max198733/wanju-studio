@@ -1,0 +1,13 @@
+{
+  "name": "@wanju/student-service",
+  "version": "2.0.6",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test *.test.mjs"
+  }
+}

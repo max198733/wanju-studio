@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 61,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M25 歌词卡点",
+    "en": "M25 歌词卡点"
+  },
+  "summary": {
+    "zh-CN": "歌词跟着人声和节拍一个字一个字跳出来。",
+    "en": "歌词跟着人声和节拍一个字一个字跳出来。"
+  },
+  "details": {
+    "zh-CN": "适合：你自己的歌，或者片子里有一段唱的部分。\n分类：文字和金句类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：你自己的歌，或者片子里有一段唱的部分。\n分类：文字和金句类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

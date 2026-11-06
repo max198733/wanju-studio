@@ -1,0 +1,75 @@
+{
+  "api_id": "api_integration.video_api_grok",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/duomi_grok_video_config.json",
+  "payload": {
+    "stage": 7,
+    "service": "多米API Grok 视频（duomiapi.com 视频生成接口，grok 系列模型）",
+    "provider": "多米API（聚合转发 xAI Grok 视频能力）",
+    "base_url": "https://duomiapi.com",
+    "model_selection": {
+      "source": "运行配置.json的grok_video_model字段（启动交互第一问选择video_engine=grok后的条件追问结果）",
+      "map": {
+        "grok": "grok-video（基础版；分辨率仅720P；按秒计费）",
+        "grok1.5": "grok-video-1.5（1.5版；分辨率仅720P；按秒计费）"
+      },
+      "rule": "grok_video_model=grok 时请求体model写作\"grok-video\"；grok_video_model=grok1.5 时写作\"grok-video-1.5\"；禁止使用其他模型名，禁止在本节写死单一模型名"
+    },
+    "endpoints": {
+      "create": "POST https://duomiapi.com/v1/videos/generations（接口文档已确认）",
+      "query": "GET https://duomiapi.com/v1/tasks/{task_id}（沿用多米API /v1/tasks/{id} 查询族：原 duomi gpt-image-2 配置同族；该查询路径为推断值，首次使用前必须按 live_test_rule 实测确认，若实际返回结构不符则以实测结果为准并回写本节）",
+      "cancel": "不适用（以平台文档为准）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json"
+      },
+      "credential_source": "工作流目录config/duomi_grok_video_config.json的api_key字段或环境变量DUOMI_GROK_VIDEO_API_KEY",
+      "key_format": "多米API密钥字符串"
+    },
+    "create_request": {
+      "model": "由运行配置grok_video_model映射：grok→\"grok-video\"；grok1.5→\"grok-video-1.5\"",
+      "prompt": "stage7视频提示词（非H3引擎通用格式：分镜原文逐字保留+最上方[镜号]|持续时长|resolution行+多参@引用与URL标注，generic_engine_prompt_rule，不用 H3 官方结构（T2VA 三字段 / Ref2VA 六段））",
+      "aspect_ratio": "运行配置project_resolution原值，取\"16:9\"或\"9:16\"（grok项目启动时按该二选一锁定）",
+      "quality": "\"720p\"（固定值：grok系列接口仅支持720P，禁止写入480p/1080p）",
+      "duration": "该镜分镜持续时长（秒）；grok接口支持1-15秒按秒计费，超出上限时按本节duration_rule截断并记录WARNING",
+      "image_urls": "图生视频时传入该镜分镜图公网URL（stage6.5 verified）；需要角色/场景参考时按已验证公网URL顺序追加（接口允许传多张参考图）；纯文生视频时省略",
+      "oversea": "false（默认；是否需要境外通道以实际连通性为准）"
+    },
+    "create_response": {
+      "task_id": "响应体 {\"id\": \"...\"} 中的 id（接口文档示例仅返回 id 字段）"
+    },
+    "query_response": {
+      "status_values": "以首次实测返回为准（不确定字段名时先按 state/status 兼容读取，命中即用并回写本节）",
+      "video_url_field": "以首次实测返回为准（优先尝试 data.video_url / video_url / output.video_url / data[].url）"
+    },
+    "duration_rule": "按该镜分镜持续时长写入（秒，整数）；grok接口按秒计费、支持1-15秒；与H3/w3.0的1/3余量规则不同——grok以分镜持续时长为准，超过15秒的镜头按15秒提交并在自检中记录WARNING（分镜持续时长>15秒时优先回stage4拆分该镜）。",
+    "resolution_rule": "grok系列仅720P：请求体quality固定\"720p\"；画幅由aspect_ratio控制（16:9横屏 / 9:16竖屏），与运行配置project_resolution一一对应；视频提示词最上方[镜号]|持续时长|resolution行写入project_resolution原值并同步体现画幅方向词。",
+    "async_rules": [
+      "创建任务后使用返回id作为task_id查询，不重复创建同一任务。",
+      "建议每10秒查询一次；终态判定以实测确认的完成/失败状态字段为准。",
+      "成功取得视频URL后必须下载视频本地副本到10-成片并登记视频URL到API任务索引，与video_return_policy同规则。",
+      "失败时读取失败信息；单镜失败只返修该镜，不重做无关镜头。"
+    ],
+    "live_test_rule": "见 api_integration.new_engine_live_test_policy（本引擎首次接入或接口参数/模型名变化后，必须先做端到端 live test：create→轮询query→取得视频URL→下载本地，并把实测结论回写本节 endpoints 与 config/duomi_grok_video_config.json；未通过前禁止整批提交stage7）。",
+    "differences_from_h3": [
+      "参考图模式：grok 以 image_urls 数组传参考图（该镜分镜图为首图，需要时可追加角色/场景公网URL），不使用H3的ref_image_0~n多参与ref_audio声线输入。",
+      "音频：grok 不传ref_audio；旁白与台词由接口侧生成或留待后期配音，stage5声线MP3在该引擎下不进入请求体（资产保留，切回H3时继续可用）。",
+      "分辨率：grok 仅720P，故project_resolution在grok项目下是画幅比例（16:9 / 9:16）而非清晰度档位。",
+      "提示词分流：仅video_engine=H3使用h3-prompt-writing标准结构（T2VA/Ref2VA）；grok与wan3.0一律用分镜原文+分辨率+多参的通用格式（generic_engine_prompt_rule），请求体字段按引擎映射。"
+    ],
+    "billing_and_limits": {
+      "reference_price": "grok-video 720p 约每秒0.06元；grok-video-1.5 720p 约每秒0.1元（按秒计费，来源：多米API 模型文档 2025-11-17）",
+      "duration_limit": "1-15秒",
+      "resolution_limit": "仅720P",
+      "note": "计费与限流以多米API控制台与最新文档为准；密钥泄露风险高，禁止写入提示词、自检结果与交付文件"
+    },
+    "routing_note": "本接口仅在运行配置video_engine=grok时被stage7使用；video_engine=H3、wan3.0或seedance时完全不读取本节，其余三个引擎的规则各自原样生效，互不覆盖。"
+  }
+}

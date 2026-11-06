@@ -1,0 +1,86 @@
+{
+  "api_id": "api_integration.cos_imgbed",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/cos_config.json",
+  "payload": {
+    "stage": "6.5（并在 stage5/stage6 出图后的同一动作内直接使用）",
+    "service": "腾讯云对象存储 COS（Cloud Object Storage）",
+    "provider": "腾讯云",
+    "role": "本工作流唯一允许的公网素材托管后端；自 v1.24.7 起替代 uguu.se / 0x0.st 等临时图床，并取代「xem8k5 返图 CDN 免上传直通」的挂载方式。",
+    "base_url": "https://<bucket>-<appid>.cos.<region>.myqcloud.com",
+    "public_domain_source": "以 ../config/cos_config.json 的 domain 字段为准（本项目示例：https://[REDACTED].cos.ap-chengdu.myqcloud.com）",
+    "endpoints": {
+      "put_object": "PUT /<key>（上传对象；签名 header 需含 content-length 与 content-type）",
+      "get_object": "GET /<key>（匿名直链读取，无需任何签名参数）",
+      "put_bucket_acl": "PUT /?acl 且 header x-cos-acl: public-read（设为「公有读私有写」）",
+      "get_lifecycle": "GET /?lifecycle（应返回 NoSuchLifecycleConfiguration）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        }
+      },
+      "credential_source": "运行时从 ../config/cos_config.json 读取 secret_id / secret_key；密钥不得写入提示词、自检结果、日志、交付文件或聊天消息。",
+      "sign_headers": "参与签名的 header 集合必须与官方 SDK 的 filter_headers 一致（host / content-type / content-length / x-cos-*）；只签 host 虽可通行，但不采用。",
+      "signing_algorithm": "sign_key = HMAC-SHA1(SecretKey, sign_time)；signature = HMAC-SHA1(sign_key, 'sha1\\n{sign_time}\\n{sha1(format_string)}\\n')；format_string = '{method.lower()}\\n{path}\\n{params}\\n{headers}\\n'，params/headers 均按 key 排序、逐项 k=quote(v, safe='-_.~')、以 & 连接。",
+      "pathname_encoding_rule": "⚠️【关键易错点·2026-09-24 实测】format_string 里的 UriPathname 必须用**未编码的原始 UTF-8 路径**（如 `/守恒商店/assets/character/CH01_v1.png`），而实际发出的 HTTP 请求行必须用**百分号编码路径**（`/%E5%AE%88%E6%81%92%E5%95%86%E5%BA%97/assets/character/CH01_v1.png`）。两者混用 —— 无论都用编码路径、还是都用原始路径 —— 一律返回 403 SignatureDoesNotMatch。含中文的 key（本项目项目前缀为中文剧名）尤其容易踩，务必按此分离处理。",
+      "verification": "签名实现上线前必须与官方 SDK 做同输入逐字节比对（离线可跑，无需真实密钥，见 _cos_imgbed/selfcheck_signer.py），并用真实图做一次端到端上传+匿名读回（见 _cos_imgbed/cos_e2e_check.py）。仅做算法比对不够——本次即因比对用例同样用了编码路径而漏过，直到真实上传才暴露。"
+    },
+    "required_bucket_settings": {
+      "acl": "必须为「公有读私有写」（x-cos-acl: public-read）。⚠️ COS 桶默认是「私有读写」，此时生成的链接会带 q-sign-time/q-signature 签名参数，**照样会过期**——换了图床却没改权限等于白折腾。",
+      "lifecycle_rule": "禁止配置生命周期规则。一旦配置，对象会被自动降冷或删除，图床立刻退化为临时图床。",
+      "acl_verification": "匿名 GET 一个不存在的 key：返回 NoSuchKey(404) = 公有读已生效；返回 AccessDenied(403) = 仍是私有读。此判据不需要密钥。"
+    },
+    "object_key_layout": {
+      "_rule": "所有 key 必须以项目前缀 {project_slug}/ 开头。同一个 COS 桶服务多部剧，靠此前缀隔离；缺了它，不同剧的 CH01/SC01 会撞成同一个 key 而互相覆盖。",
+      "project_slug": "{project_slug} = 当前项目文件夹名；仅保留中文/字母/数字/-/_，其余字符（空格、/、#、? 等）替换为 _；建议 ≤24 字符",
+      "assets": "{project_slug}/assets/{asset_type}/{asset_id}_v{version}.webp",
+      "storyboard": "{project_slug}/storyboard/{episode}/{shot_id}.webp",
+      "voice": "{project_slug}/voice/{voice_id}.mp3",
+      "album": "{project_slug}/album/{episode}_分镜图册_v{version}.html（可选；仅当图册需公网访问时上传）",
+      "_format_rule": "【v1.24.14】图片对象的扩展名必须与实际上传格式一致：上传物为转码后的 WebP，故资产与分镜图的 key 一律用 .webp（不是母版的 .png）。key 与 content-type 必须一致，禁止用 .png 后缀承载 WebP 内容（下游按后缀判格式会导致解码失败）。"
+    },
+    "multi_project_isolation": {
+      "rule": "一个 COS 桶服务多部剧，按 {project_slug}/ 前缀隔离；跨剧不得复用同一 key，也不得把 A 剧的 URL 写进 B 剧的索引。",
+      "project_slug_source": "当前项目文件夹名（project_layout.root）；项目内 13-工作流文档/运行配置.json 记录本项目 slug 后全程锁定，同一项目所有阶段必须使用同一个 slug（禁止中途改名，否则会产生第二套副本）。",
+      "visible_as_folders": "COS 控制台会把 key 中的 / 显示为文件夹，因此每部剧在控制台里自然呈现为一个独立目录树：{project_slug}/assets、{project_slug}/storyboard、{project_slug}/voice。",
+      "example": "守恒商店/assets/character/CH01_v1.webp ；守恒商店/storyboard/S01/S001.webp ；赛博朋克天京府/assets/scene/SC01_F_v1.webp",
+      "encoding": "COS 支持 UTF-8 key，中文项目名可直接使用；URL 中的中文按 RFC 3986 百分号编码，写入生成后端 ref_image 时保持编码后形式即可（签名自校验已覆盖中文对象名场景）。",
+      "cleanup": "停用某部剧时只需删除该前缀下的全部对象，不影响其他剧。"
+    },
+    "url_lifecycle": {
+      "durability": "COS 对象 URL 为永久地址：无签名参数、不设 TTL、不随跑批周期失效，也不随项目闲置而清除。",
+      "no_renewal_needed": "因此下列历史动作全部废止：① 跑批前全量『清死链/续期』；② 到期前用 xem8k5 图生图复刻迁移（url_source=xem8k5_replica_migration）；③ 基于 TTL 的跨镜缓存失效设计。",
+      "recheck_rule": "仅保留一次可访问性校验作为异常兜底（HTTP 200 + Content-Type 与素材类型匹配（图片 image/webp、声线 audio/*）+ 体积 > 10KB）。校验失败时用本地无损母版重转 WebP 后重传 COS 取得新 URL（url_source=cos_rehost）；无本地母版才回退重新出图。",
+      "index_contract": "索引中 url_source 允许值：cos（首次上传）/ cos_rehost（重传）/ external（外部来源）。xem8k5_returned_url 字段自 v1.24.7 起承载 COS 永久直链。"
+    },
+    "upload_contract": {
+      "atomicity": "出图（或产出素材）与上传 COS 不可分离：取得本地副本并通过落地校验后，同一动作内完成 COS 上传与 URL 登记，禁止把上传留到下一阶段补做。",
+      "verification": "上传成功后必须以匿名 GET（不带任何签名）复核一次，确认返回 200 且内容与本地副本一致，方可写入索引并置 url_status=verified。",
+      "forbidden": "禁止写入本地路径、file://、localhost、内网 IP、带 q-sign-* 签名的临时 URL、以及非 COS 域名的第三方图床地址。",
+      "format_contract_ref": "standards/asset_upload_format_policy.json（口径唯一真源）——上传对象必须是**由本地无损母版一次性转码得到的 WebP**，transcode_source=lossless_master、transcode_passes=1；身份锚点（asset_type=character）保原生分辨率，普通参考（prop/scene/storyboard_image）降分辨率；本地无损母版原样保留，不得上传后删除。",
+      "content_type": "image/webp（图片对象；与 key 的 .webp 后缀一致）"
+    },
+    "handoff_to_h3": [
+      "stage7 的 ref_image_0~n 与 ref_audio_0~n 直接写入 COS 直链。",
+      "所有子链必须为 https 协议且不含任何 query 参数（签名参数即代表临时链接，一律拒收）。",
+      "同一批素材必须来自同一个 COS 桶与同一域名，禁止混用多个图床（历史事故：混用旧 CDN 会导致生成后端对该域名不可达而全批 404）。"
+    ],
+    "billing_and_limits": {
+      "storage": "按对象存储容量计费；个人用户通常有 50GB 标准存储免费额度（6 个月）。",
+      "traffic": "【v1.24.14 口径更正】外网下行流量按『**单图体积 × 拉取次数**』计费（约 0.64 元/GB），**不是**按上传量计费。参考图会被下游模型在每次多参请求时整张反复拉取——一张资产图在一批里可能被拉几十到上百次，故单图体积是这条乘积的唯一可控因子。旧版本『图片素材体量下总成本极低』的判断是**错的**，根因即在于此：体积会被拉取次数成倍放大。处置：上传前由无损母版一次性转 WebP，单图体积降至约 10%，流量随之等比例下降。",
+      "note": "以腾讯云账号实际账单为准。",
+      "storage_cost_note": "存储侧（容量）不因转码而增加——同一张图只存一份 WebP；若同时保留母版，母版存本地不入 COS。"
+    },
+    "tools": {
+      "probe_script": "C:\\黛西\\技能组\\_cos_imgbed\\cos_probe.py（独立工具，不属组合包、不受版本锁约束）",
+      "modes": "perm（免密钥探读权限）/ fix-acl（API 改桶 ACL）/ check（查生命周期规则）/ upload（端到端上传+匿名读验证）",
+      "signer_selfcheck": "C:\\黛西\\技能组\\_cos_imgbed\\selfcheck_signer.py（与官方 SDK 逐字节比对签名实现，离线可跑）"
+    },
+    "migration_note": "2026-09-24 由 uguu 等临时图床整体切换为腾讯云 COS。切换前四连测通过：fix-acl 返回 200；check 返回 NoSuchLifecycleConfiguration；perm 匿名 GET 不存在的 key 返回 NoSuchKey(404)（证明公有读生效）；upload 端到端签名上传 200、匿名读取 200 且内容一致。"
+  }
+}

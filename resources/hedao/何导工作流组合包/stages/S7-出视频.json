@@ -1,0 +1,915 @@
+{
+  "skeleton_id": "S7",
+  "skeleton_version": "2.1.1",
+  "pack_version": "2.1.1",
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "name": "出视频",
+  "stage_numbers": [
+    7
+  ],
+  "purpose": "写视频提示词、跑提交前闸门、发起生成、轮询下载。不剪辑，出片即交付，无返工。",
+  "core_anchor": {
+    "rule": "本环节执行前必须已读 core/00-core.json 全文，且其 sha256 与下列值一致。core 是唯一真源，不在本文件内复制，避免 7 份副本各自漂移。",
+    "redline": {
+      "file": "core/00-core.json",
+      "sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+      "sections_must_obey": [
+        "scope",
+        "execution_discipline",
+        "global_rules",
+        "state_management",
+        "missing_input_protocol",
+        "rollback_and_revision",
+        "self_check_protocol",
+        "credential_policy"
+      ]
+    },
+    "support": {
+      "file": "core/01-support.json",
+      "sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+      "sections_must_read": [
+        "local_execution_environment",
+        "project_layout",
+        "runtime_control",
+        "gate_enforcement"
+      ]
+    },
+    "contracts": {
+      "file": "core/02-contracts.json",
+      "read": [
+        "本环节 in",
+        "本环节 out"
+      ]
+    }
+  },
+  "load_policy": {
+    "order": [
+      "1) 读 core/00-core.json 全文（红线层，必读，一次）",
+      "2) 读 core/01-support.json 的 sections_must_read 所列章节（一次，可跨环节复用）",
+      "3) 读 core/02-contracts.json 本环节的 in / out",
+      "4) 版本比对：manifest.json → pack_version + core_sha256（=core_anchor.redline.sha256）+ skeletons.S7.sha256",
+      "5) 读本文件：先看 phase_plan / stages，再按当前工序只读那一段",
+      "6) stage_policies 是本环节的硬策略块（引擎路由、时长算法、URL 规则、图册规则等），做判定时才查对应 key，不必逐条背",
+      "7) 用到技能才读 skills/；用到接口才读 api/ 并从 ../config 取密钥",
+      "8) 跑 gates 字段列出的闸门"
+    ],
+    "forbid": [
+      "禁止预读其他环节骨架",
+      "禁止一次性把本文件所有 phases 塞进上下文",
+      "禁止在 core 之外另存红线规则副本并手改"
+    ]
+  },
+  "contracts": {
+    "in": [
+      {
+        "name": "公网素材URL索引",
+        "path": "08-分镜公网URL/公网素材URL索引.json",
+        "schema": "public_url_index",
+        "must_contain": [
+          "asset_id",
+          "xem8k5_returned_url",
+          "verified"
+        ],
+        "hard_rule": "S7 只接受 verified=true 的 URL；任一绑定找不到 verified URL 即阻断该镜"
+      },
+      {
+        "name": "分镜图册",
+        "path": "08-分镜图册/",
+        "schema": "album_html"
+      }
+    ],
+    "out": [
+      {
+        "name": "成片视频",
+        "path": "10-成片/",
+        "schema": "video_files",
+        "must_contain": [
+          "文件 >10KB",
+          "容器头签名正确",
+          "可播放"
+        ],
+        "note": "本工作流终点。不剪辑、无返工环节。"
+      }
+    ]
+  },
+  "phases": [
+    {
+      "phase_id": "7a",
+      "name": "提示词生成期",
+      "read_rule": "读分镜母版与公网URL索引、按引擎路由技能、写提示词、组装多参绑定。只读这一段。",
+      "rules": [
+        "读取完整分镜原文作为内容母版，保留镜号、时长、机位、光影、场景与人物、画面内容、运镜、音效和台词含义；分镜原文永远是动作、运镜、时序和声音的第一依据。",
+        "【视频提示词技能路由·生成提示词前第一步】读取运行配置 video_engine（及 seedance 项目的 seedance_model），按 embedded_skills.video_prompt_skill_router 选择唯一一套视频提示词技能并只加载该套：video_engine=H3 → embedded_skills.video_generation_extension（h3-prompt-writing，Ref2VA 官方六段/T2VA 官方三字段）；video_engine=seedance 且 seedance_model=seedance2.5 → embedded_skills.video_prompt_skill_seedance25（时间轴标记的镜头组原文+多参）；其他全部情况（wan3.0 / grok / seedance2.0 / 后续新增引擎）→ embedded_skills.video_prompt_skill_generic（分镜原文+多参）。三套互斥、禁止相互调用、禁止混用；路由结果（命中条件+选中技能名）写入 13-工作流文档/阶段状态.json 的 stage7 记录。",
+        "读取运行配置video_engine并路由视频引擎与提示词格式：**只有 H3 调用 h3-prompt-writing 视频提示词技能**（api_integration.video_api，AutoDL ComfyUI MiniMax-H3，多参ref_image/ref_audio全流程，提示词按 MiniMax 官方 H3 提示词规范生成）；H3 以外的全部引擎（wan3.0、grok、seedance 及后续新增引擎）一律**不使用**该技能，提示词直接用分镜脚本原文+多参数据写入（generic_engine_prompt_rule），请求体按引擎各自映射——wan3.0→api_integration.video_api_wan3_0（input.prompt=提示词全文、input.img_url=该镜分镜图公网URL、不传ref_audio）；grok→api_integration.video_api_grok（model按运行配置grok_video_model映射：grok→grok-video、grok1.5→grok-video-1.5；prompt=该镜提示词全文；aspect_ratio=运行配置project_resolution原值（16:9或9:16）；quality固定720p；duration=该镜持续时长；image_urls=[该镜分镜图公网URL]；oversea=false；不传ref_audio）；seedance→api_integration.video_api_seedance（model按运行配置seedance_model映射：seedance2.0→doubao-seedance-2-0-260128、seedance2.5→doubao-seedance-2-5-260628；content数组：type=text.text=该提示词全文 + type=image_url（参考图一律为资产图：人物→场景→道具，按镜序去重，role=reference_image；v1.24.13 起不传分镜图、不设 first_frame）；ratio=运行配置seedance_aspect（16:9或9:16）；resolution=运行配置seedance_resolution的小写形式（480p/720p/1080p）；duration=该镜持续时长；generate_audio按项目配置；watermark=false；不传ref_audio）。",
+        "非H3引擎提示词规则（generic_engine_prompt_rule）——**适用范围：wan3.0 / grok / seedance 且 seedance_model=seedance2.0 / 后续新增的任何非H3、非seedance2.5引擎；seedance2.5 不在本条适用范围**（它由 embedded_skills.video_prompt_skill_seedance25 生成组提示词、以镜头组为单位提交，见本阶段 process[04] 与 engine_routing_policy.seedance_route / prompt_skill_routing_rule）：**硬规则——只要 video_engine≠H3，就禁止调用 h3-prompt-writing 技能、禁止输出 H3 官方结构（T2VA 三字段 / Ref2VA 六段）；该类项目的唯一提示词来源是「分镜脚本原文 + 多参数据」（分镜图与角色/场景参考图的 @引用及公网URL标注）**。每镜视频提示词直接由分镜原文构成——逐字保留该镜镜号、持续时长、机位、景别、光影、场景与人物、画面内容、运镜方式、音效与台词原文，禁止改写、禁止翻译为英文、禁止转换为 H3 官方结构（T2VA 三字段 / Ref2VA 六段）；提示词最上方同样写[镜号] | 持续时长：X秒 | resolution\": 项目锁定分辨率行（分辨率从运行配置project_resolution读取）；多参@引用（@asset_id_角色资产图/@asset_id_场景资产图/@分镜图等）与公网URL标注按该镜image_bindings原样附在提示词内；请求体按对应引擎字段映射写入（wan3.0：input.prompt=该提示词全文、input.img_url=该镜分镜图公网URL；grok：model=按grok_video_model映射、prompt=该提示词全文、aspect_ratio=project_resolution、quality=720p、duration=该镜持续时长、image_urls=该镜分镜图公网URL；seedance2.0（仅 2.0；2.5 走组级提交，见 process[04]）：model=按seedance_model映射、content[type=text].text=该提示词全文、content[type=image_url].image_url.url=资产参考图（人物→场景→道具，role=reference_image）、ratio=seedance_aspect、resolution=seedance_resolution小写、duration=该镜持续时长；后续新增引擎按其接口映射）；除提示词格式与请求体映射外，资产URL校验、blocked镜头、任务索引等其余规则照常执行。",
+        "【seedance2.5 组级提交】当 video_engine=seedance 且 seedance_model=seedance2.5 时，提交单位由「镜」改为「镜头组」：读取 06-分镜/01-分镜管线/镜头组清单.json，逐组读取该组组提示词（最上方为 [组ID] | 组总时长：X秒 | resolution: 项目锁定分辨率 行；其后组内各镜分镜原文按镜序完整拼接，**每一镜原文之前必须带该镜时间区间标注「第{S}秒-第{E}秒：」**——第1镜起于第1秒、区间连续无空档无重叠、末镜结束秒=组总时长，由镜头组清单中各镜持续时长推导；再附多参@引用与URL标注），组内各镜资产图按 人物→场景→道具 去重后传入（role=reference_image；v1.24.13 起不传分镜图、不设 first_frame）；duration=组总时长（4-28秒内，超限阻断并回 stage4 拆组）；产物命名 {shot_group_id}_视频_v{n}.mp4；API任务索引以 shot_group_id 绑定 task_id 并记录含镜清单与各镜时间区间；stage8 抽卡/全路重做同样以组为单位。video_engine=seedance 且 seedance_model=seedance2.0 时不适用本条，仍逐镜提交、不做时间轴标注。",
+        "video_engine=H3时生成每镜视频提示词（h3-prompt-writing 官方规范格式；非H3引擎按上一条generic_engine_prompt_rule生成分镜原文格式提示词），提示词最上方必须写镜号、该镜头持续时长和项目分辨率（格式：[镜号] | 持续时长：X秒 | resolution\": 项目锁定分辨率——H3项目为 h3_interface_tier 对应档位的取值之一（standard_4：768p竖/1080p竖/768p横/1080p横 之一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 之一），wan3.0项目为720p竖/1080p竖/720p横/1080p横之一，grok项目为16:9或9:16（grok系列接口仅720P，quality固定720p，该值为画幅比例），分辨率从运行配置project_resolution读取启动时按video_engine联动锁定的值），再输出 H3 官方结构（T2VA 三字段或 Ref2VA 六段）；镜号与持续时长严格取自该镜头分镜原文，不得改写；分辨率行必须实际写入提示词正文，不得省略、不得只放请求参数里。",
+        "【v1.24.8·台词前置块·强制】H3 提示词的渲染顺序为：首行写 [镜号] | 持续时长：X秒 | resolution\": 项目锁定分辨率；**第二行紧跟一个台词块**——有台词镜写 `台词：{角色名}：{台词原文}`（多条用分号分隔、按本镜说话顺序排列），无台词镜写 `台词：无`；台词块之后才是官方六段正文（Ref2VA 六段 / T2VA 三字段）与多参绑定清单。此块让 H3 先读台词、再读画面与参数；台词块内文本必须与该镜六段正文中 <d> 内的台词逐字一致，禁止改写、增删、翻译或与其它字段内容混写。",
+        "读取stage6.5通过的公网素材URL索引；多参生成的所有角色、道具、场景和分镜图素材只能作为已验证的reference_image公网URL传入，禁止使用first_frame、last_frame或本地路径；该接口不使用MiniMax原生content数组，素材一律走平台工作流的ref_image_0~n输入字段。",
+        "先解析多参@引用并生成有序asset_bindings清单，再逐一读取每个绑定在公网URL索引中的verified URL（xem8k5_returned_url优先），把实际URL写入AutoDL工作流请求体的ref_image_0~n字段；不得只把@文本拼进prompt而省略ref_image字段；字段编号与提示词标签定义顺序一一对应（<Subject 1>→ref_image_0、<Subject 2>→ref_image_1……<Picture N> 紧随其后），与技能 reference_input_binding_rule 一致。",
+        "本镜有说话人时解析声音参考：按该镜说话顺序读取说话人voice_id，从08-分镜公网URL/公网素材URL索引.json取对应声线MP3的verified公网URL（voice_returned_url），写入H3请求体ref_audio_0~n字段（ref_audio_0对应第一个说话人，最多3个音频，与v2工作流上限一致）；@[voice_id]_声线资产标签与ref_audio字段一一对应，禁止只写标签不写ref_audio、禁止用角色名或本地MP3路径代替；无说话人镜头不传ref_audio。",
+        "按 h3-prompt-writing 技能（embedded_skills.video_generation_extension.video_prompt_skill，仅 video_engine=H3 时经路由选中并加载）解析输入：@人物资产图→<Subject N>、@道具资产图→<Subject N>、@对应镜头分镜图→<Picture N>；参考标签先定义后使用，并在subject_definitions、summary、retention_analysis、detailed_description中保持同一含义。",
+        "按有无参考资产选择模式：无参考资产输出 T2VA 官方三字段（integrated_multimodal_description / overall_soundscape / non_diegetic_music）；有参考资产输出 Ref2VA 官方六段（subject_definitions / summary / retention_analysis / detailed_description / overall_soundscape / non_diegetic_music）。",
+        "H3引擎下分镜原文内容改写为英文H3镜头描述（非H3引擎不做英文改写、直接使用分镜原文），H3时描述段开篇按技能 composition_enhancement_rule 先写构图设定（读取分镜「场景与人物」板块：以参照物为基准的全员站位、在场状态，与scene_blocking_policy锁定站位零偏差），再写其余内容；构图设定的人物对象只能是该镜『场景与人物』字段列出的出镜人物（逐一带asset_id），禁止把字段外的人物（含场景人物清单中在场但未入画者）写进构图设定、detailed_description或任何Subject；但不得改变动作、时序、角色关系、景别、机位、场景结构和台词原文；禁止只总结剧情，禁止为了英文更美观而改掉分镜动作，禁止添加分镜中没有的人物入场、表情、物品、特效、冲突或台词。",
+        "H3镜头描述必须如实保留分镜的连贯性信息：人物站位（按分镜站位描述与参照物关系转写，以参照物为基准的全员站位；无走动维持原站位，走动后下一镜按更新后的整体站位写）、视线轴线、动作三阶段、光影与时间基调、情绪状态、镜间衔接（写入detailed_description对应描述位置）；H3格式（T2VA/Ref2VA结构、最上方镜号+持续时长+分辨率、台词转换）保持不变，连贯性信息只作内容表述，不新增字段段。",
+        "正反打/过肩镜头的H3构图按该镜『场景与人物』字段的场景面标注书写：构图开篇先写明本镜所处场景拍摄面与面ID（正面SCxx_F/背面SCxx_B）及该面机位方向所见环境空间，再按构图增强规则写参照物与全员站位；同场景正反打跨镜按stage4组级『说话人→面资产』绑定切换正/反面描述（拍说话人1正脸镜=面A/SCxx_F、拍说话人2正脸镜=面B/SCxx_B，过肩镜同绑定），两镜背景为同一场景沿轴线两侧的空间，禁止相邻反打镜把背景写成同一侧或写成两个不同场景；场景资产Subject/Picture绑定本镜所处面的场景面资产ID，与组级绑定一致（见shot_reverse_shot_scene_face_policy.group_face_binding_rule）",
+        "台词行按说话人ID映射表转换为H3原生对白句式：<Subject N> (S1), with [fixed voice description], says with [current tone]: <d>[Chinese] 台词原文</d>；其中 [fixed voice description] 必须从02-角色/03-音色圣经与基准音轨/固定声线圣经.json（或说话人ID映射表中的固定声线字段）逐字读取该角色锁定版本，禁止AI自行编写或改写声线；固定声线跨镜逐字复用，当前语气挂在says后，<d>内只放语言标签和台词原文；该说话人的实际音色由对应voice_id的声线MP3经ref_audio锁定，与文字声线描述保持一致；无台词镜头明确No character speaks in this shot; all visible mouths remain closed with no lip movement。",
+        "画外音台词以画面为准规则（offscreen_dialogue_dropped_by_frame_rule）：拆镜与生成视频提示词时，镜头以画面为准——台词说话人必须在该镜画面内（说话人asset_id在该镜visible_character_asset_ids中），才允许转换为<Subject N> says对白句式并挂载其ref_audio；说话人不在画面内的画外音台词，一律不写入该镜提示词、不创建<Subject N>、不传其ref_audio，该镜按无台词镜处理（No character speaks in this shot; all visible mouths remain closed with no lip movement），并在跑批日志记录丢弃明细供导演复查；旁白（无对应画面角色）不受本规则限制，仍走off-screen narrator句式。背景：H3在画面内找不到说话人时会强行把口型安给画面内角色（S01_03/S01_04狰幼崽误开口事故），实测文字声明no lip-sync无效、内心OS写法效果不稳，故以画面为准从源头规避。",
+        "画外音台词拆两镜规则（offscreen_dialogue_split_two_shots_rule）：拆镜时若遇人物说话但该镜画面不是该人物（画外音台词），必须拆成两个镜头：镜头A沿用原画面构图与动作，不挂该台词（按offscreen_dialogue_dropped_by_frame_rule按无台词镜处理）；镜头B为说话人入画镜——画面切到该说话人物（同一场景内，景别与机位按拆镜规范重新选定，优先中近景/特写），台词挂到该说话人并由其入画开口说（正常<Subject N> says句式+固定声线+对口型）；两镜镜号顺延，时长从原镜拆分或按规范重新分配，其余分镜字段按原文保留；本规则为拆镜层首选处理方式，offscreen_dialogue_dropped_by_frame_rule为stage7兜底（定稿分镜未拆时丢弃画外音台词）。",
+        "每镜detailed_description中必须明确写出该镜头出场人物（即该镜『场景与人物』字段写明的实际出镜人物，逐一带asset_id）；提交前按剧本版与分镜版双重核对出场人物：对照stage3剧本该剧情段出场人物与stage4分镜该镜『场景与人物』字段人物，两版取并集只为防漏人（若剧本要求必须入画而『场景与人物』漏写，回stage4返修补齐字段），人物挂载仍以该镜『场景与人物』字段为唯一清单；该镜出场人物的资产必须全部挂载为<Subject N>并写入ref_image字段，禁止漏挂或错挂，也禁止写入该镜『场景与人物』字段与剧本没有的人物",
+        "按人物、道具、场景顺序挂载资产：人物数量无上限（该镜全部出场人物资产均挂载为<Subject N>并写入ref_image），道具最多2个、场景1个。",
+        "创建H3请求前确定生成参数：duration按该镜头分镜持续时长写入（含stage4的1/3余量，限制在4-10秒，低于4秒按4秒保底；实测未传时平台默认8秒）；分辨率必须写入视频提示词并使用启动时用户锁定的项目分辨率（按video_engine从对应组锁定：H3项目为 h3_interface_tier 对应档位的取值（standard_4：768p竖/1080p竖/768p横/1080p横；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440)），wan3.0项目为720p竖/1080p竖/720p横/1080p横，grok项目为16:9或9:16，seedance项目为{aspect}·{resolution}（如16:9·1080P），读取运行配置project_resolution；提示词最上方[镜号] | 持续时长：X秒 | resolution\": XXX 行中实际写入该值，同时提示词正文画面描述内体现对应画幅方向），请求分辨率参数与提示词保持一致；该工作流支持ref_audio_0~n音频输入（最多3个），本镜有说话人时把其voice_id对应声线MP3公网URL写入ref_audio_0（多人说话按说话顺序写入ref_audio_0~2），无说话人时不传ref_audio。",
+        "若任一@引用找不到verified公网URL、URL不可访问或无法写入ref_image_0~n字段，阻断该镜头提交并记录asset_input_missing、写入blocked_镜头清单.json；该镜头跳过不阻塞整批，其余镜头正常提交；按image_return_policy.failure_handling回退stage6.5或重新出图，不得用本地路径或无效URL提交。",
+        "overall_soundscape只总结环境音和动作声，不重复对白；non_diegetic_music无配乐时填写N/A；全程无BGM。",
+        "提示词按技能 core_output_rules 与 reference_input_binding_rule 通过自检（字段顺序、标签一致性、时长匹配、构图设定、ref_image字段完整）后检查API任务索引。",
+        "生成subject_definitions时，强制让每个<Subject N>标注对应asset_id，Subject编号顺序与该镜分镜脚本『场景与人物』字段中出场人物（角色正式名（asset_id））的书写顺序完全一致，人物集合与该镜visible_character_asset_ids一致；禁止只用角色名、简称或别名定义Subject，禁止把未写入『场景与人物』字段的人物挂为Subject。",
+        "建立本镜subject_id→asset_id→speaker_id→voice_id→ref_image_url→ref_audio_url对账表：Subject编号、asset_id、说话人ID、voice_id、ref_image字段和ref_audio字段顺序必须与该镜『场景与人物』字段出场人物asset_id/说话顺序一致（=visible_character_asset_ids顺序），URL按asset_id从公网素材URL索引精准提取并写入13-工作流文档/API任务索引.json。",
+        "读取该镜分镜脚本『场景与人物』字段写明的出场人物（角色正式名（asset_id），仅画面实际出镜人物）作为该镜视频人物绑定的文字母版，其人物集合=该镜visible_character_asset_ids；普通视频镜头仅为母版中列出的实际入画人物逐一创建Subject并绑定对应角色ref_image；未写入『场景与人物』字段的人物（含场景清单在场者）不得创建Subject或写入ref_image。分镜写明两人入画时，角色参考绑定不得只给一张图。",
+        "【seedance2.5 组内切镜交模型（group_transition_rule，强制）】组提示词内，组内各镜之间的切换不再单独描述：①唯一切换指令 = 每镜原文之前的「第{S}秒-第{E}秒：」时间区间标注，模型在指定秒数切到指定镜；②禁止自造衔接词、过渡语、转场描述（如『随后镜头切换至』『紧接着画面转到』『接着切到下一镜』等），也禁止把组内各镜改写成一条连续镜头描述；③各镜原文独立成段、字段逐项保留，顺序即切镜顺序、秒数即切镜时刻；④时间区间必须逐镜与 06-分镜/01-分镜管线/镜头组清单.json 一致，由各镜持续时长推导（E_k=S_k+d_k-1、S_{k+1}=E_k+1、E_n=组总时长），禁止另编时长。",
+        "【seedance2.5 组级总体运镜（group_camera_movement_rule，强制）】组提示词内组内各镜不再逐镜出现『运镜方式』字段，整组只有一条组级总体运镜，**以焦点迁移路径引导镜头移动**：写清焦点从哪个对象起、按组内时间区间沿什么路径迁移到哪个对象，焦点格式 `焦点：[焦点对象]（[该对象在本镜的具体可见状态]）`，分段与每镜前的「第{S}秒-第{E}秒：」时间区间逐段对齐；每段运镜仍须落在 standard_camera_movement_system 六类闭集内，并逐镜计入固定镜头占比统计（固定占比 50%-60% 不变）；禁止一组内并列多个独立运镜名、禁止只写运镜名而不描述焦点迁移路径；**其余内容仍按分镜原文逐字保留**（镜号/持续时长/机位/景别/光影/场景与人物/画面内容/音效/台词），本条只改『运镜』一项的组织层级（逐镜→组级），不改任何画面、时序、台词与切镜方式。",
+        "【v1.21.31 补充】视频参考绑定同样以该镜『场景与人物』字段为唯一来源，人物／场景／道具三类全量绑定：人物→<Subject N>+ref_image、场景→面资产 ref_image、道具→道具 ref_image。禁止只绑人物而漏绑场景或道具；提交前跑本阶段自检与 gates/asset_download_atomicity_gate.py，确认三类绑定齐备。",
+        "【v1.21.32 补充】H3 提示词严格遵守「**分镜（内容源）+ 官方要求格式（结构）+ 多参数据（绑定）**」三层构成：内容逐字段取自该镜分镜卡九字段（映射见 embedded_skills.video_generation_extension.video_prompt_skill.storyboard_field_mapping）；结构严格按官方 Ref2VA 六段（字段名／段序／参考标签／时间记号逐字照官方）；绑定按『场景与人物』栏挂 @资产标签与 ref_image／ref_audio。生成后跑 gates/h3_video_prompt_format_gate.py 校验六段结构与内容溯源，通过后才允许提交。",
+        "【v1.24.7·无台词镜的 ref_audio 处理】video_engine=H3 且 h3_interface_tier=high_8 时，ref_audio_0 为该端点硬必填，**无台词镜也必须传一条静音参考音占位**（用 ffmpeg `-f lavfi -i anullsrc -t 3` 生成 MP3 后上传腾讯云COS取永久直链），同时提示词内严格写该镜无人说话、全员闭口；standard_4 档不强制 ref_audio_0（2026-09-24 实测：仅传 prompt+resolution+duration+ref_image_0 即受理并跑通），无台词镜可不传。禁止用有声素材给无台词镜占位。",
+        "【v1.24.12 多参组成修订】本镜 ref_image 按「人物 → 道具 → 分镜图」组装：人物取该镜 visible_character_asset_ids（每镜 ≤3 人，见 stage4 单镜人物上限），道具取本镜实际出场道具（≤2），分镜图固定作为 <Picture N> 置于末位；**场景资产图不再进入 ref_image**（场景与站位信息由分镜图承载）。ref_image 总数超档位上限时只裁道具，人物与分镜图一张都不能少；若『人物+分镜图』已超限，停下报导演裁决，不得自行取舍。",
+        "【v1.24.13 参考图组成分路线】组装多参前先按运行配置判定路线并套用对应组成：① 通用（wan3.0/grok/seedance2.0）——人物（visible_character_asset_ids）→ 道具（本镜出场道具）→ 分镜图（末位），**不引用场景资产图**；② seedance2.5——人物 → 场景 → 道具的资产图（按镜序去重），**不引用分镜图、不设 first_frame**；③ H3——人物 → 道具 → 分镜图，超档位上限只裁道具。三套组成互不相同，禁止跨路线套用。",
+        "【人物朝向（v1.24.19，P0）】视频提示词的『画面内容』段同样逐字继承 stage4 卡文，其中的人物身体/面部朝向约束（不得正对镜头）必须保留、禁止删除或改写成『面向镜头』；视频生成的每一段内人物身体与面部都不得正对镜头，运动过程中（走位、转身）也不得转到正对镜头位；确需人物直视镜头的特殊设计必须已登记『（用户要求：允许直视镜头）』授权。"
+      ],
+      "rule_count": 35,
+      "bytes": 23576
+    },
+    {
+      "phase_id": "7b",
+      "name": "提交前闸门",
+      "read_rule": "发起任何视频请求前必跑的三道闸门。只读这一段。",
+      "rules": [
+        "提交H3前执行三重身份核对：stage3剧本段落出场人物⊆stage4场景人物清单（防漏超集基准）；当前subject_definitions人物asset_id集合=该镜『场景与人物』字段出场人物集合=visible_character_asset_ids；剧本/清单要求入画但字段漏写→回stage4返修；Subject中出现字段外人物或台词(Sx)身份不一致均记录mismatch_asset_id并阻断。",
+        "【v1.21.35·提交前强制闸门】发起 H3 生成前必须跑 gates/h3_video_prompt_format_gate.py 且 PASS；其中 H3FMT-C8（标签归属）／C9（台词闭口句）／C10（画面文字纪律）／C11（画幅方向）为 v1.21.35 新增 P0 项。不得带格式缺陷提交 H3；闸门未跑或未过即视为本阶段未完成。",
+        "【v1.24.25·提交前第二道闸门】视频提示词写入 07-分镜提示词 之后、发起 H3 生成之前，除 gates/h3_video_prompt_format_gate.py 外**还必须跑 gates/h3_video_ref_binding_gate.py（REFBIND-C1~C6，P0）并 PASS**：核对「提示词 ref_image 清单 / stage6.5 公网素材URL索引 / 实际请求体回写」三处一致，确保分镜图真的被垫进 ref_image（URL 取 stage6.5 资产索引的 WebP，不得取 stage6 任务索引的 PNG 母版地址）、且全部 ref_image 为 WebP、数量未超档位上限、组成顺序为人物→道具→分镜图末位；任一项 FAIL 即禁止提交该镜。",
+        "【v1.24.27·提交前必跑·逐镜全量】发起 H3 生成前，`h3_video_prompt_format_gate`（含 H3FMT-C15/C16 台词绑定与说话人 ID）与 `h3_video_ref_binding_gate`（含 REFBIND-C1~C7：分镜图必进 / 全 .webp / 数量上限 / 组成顺序 / 人物集合 / 实发==提示词 / 描述与分镜卡对齐）两者必须 PASS，且**逐条覆盖全部镜头、禁止抽样**；报告须给出逐镜结果表。任一镜 FAIL 即禁止提交该镜。",
+        "【v1.24.28·提交前硬闸门】发起任何视频请求之前，先跑 `gates/h3_video_ref_binding_gate.py`；该闸门逐镜核对『提示词 ref_image 清单 ↔ stage6.5 公网素材URL索引 ↔ 实际请求体回写』三处，其中 REFBIND-C1 要求每镜必含本镜分镜图、REFBIND-C8 要求生成器入口存在硬拒绝护栏。**任一镜缺分镜图 → 整批阻断，一条都不许发**；只有闸门 PASS 才允许进入提交环节，并把闸门结果文件留档。",
+        "【改卡-提示词-提交闸（v1.24.34，P0）】凡修改分镜卡（含任何字段、任何镜）后需要出图或出视频：①改卡；②逐条断言『每一处目标改动确实存在于卡内』；③重建提示词；④断言『重建后的提示词确实包含该新文本』；⑤以上四步全部通过才允许向生成接口提交，任一步失败就地停止、不发任何请求。"
+      ],
+      "rule_count": 6,
+      "bytes": 2775
+    },
+    {
+      "phase_id": "7c",
+      "name": "提交与出片期",
+      "read_rule": "建任务、轮询、单发无重试、下载落地三合一。只读这一段。",
+      "rules": [
+        "无已受理任务时创建H3任务并立即绑定镜号和task_id。",
+        "任务创建成功后，把本镜头请求体中实际使用的ref_image字段名与对应公网URL清单、ref_audio字段名与voice_id/声线URL清单回写13-工作流文档/API任务索引.json，闭合image_return_policy与voice_bible_audio_policy的返图链路。",
+        "轮询原task_id，成功后**在同一动作内（v1.21.30）**立即下载至10-成片对应目录并完成落地校验（文件存在且>10KB + 容器头签名正确如 MP4=66 74 79 70 'ftyp' + 可播放性抽检），校验通过后才登记 h3_returned_video_url 与本地路径到13-工作流文档/API任务索引.json；禁止把视频URL留到后续阶段再取——视频URL与图像URL同属易腐引用，未落盘即视为该镜未完成。",
+        "下载后检查文件可播放及内容与分镜一致。",
+        "视频结果自检通过后，才允许将视频写入10-成片对应目录并将本阶段标记为passed。",
+        "读取镜头是否标记multi_reference_overlimit_composite=true；若是，对应视频仅将第二阶段final_storyboard_url作为唯一分镜图输入H3，ref_image恰好1个，禁止垫加任何人物资产、场景资产或中间合成图。",
+        "【v1.21.30 补充】视频出片与下载不可分离：轮询成功后同一步内完成『落盘 + 落地校验 + 索引登记』三件事；收尾前跑 gates/asset_download_atomicity_gate.py，确认不存在『已登记 h3_returned_video_url 但磁盘无对应视频文件』的条目。",
+        "【v1.24.20·视频单发纪律】视频生成链路（含 H3 各档位）**废除一切自动重试**：禁止 for/while 重试循环、多层重试嵌套、子进程重跑、后台自动补跑；提交前查生成台账去重，同一 shot_id 任一时刻只有一个在途请求；失败即停；**AI 觉得不好必须询问导演、禁止自行重跑**；二次生成必须先登记导演授权。批量（≥2 镜）开跑前先报备预计请求数给导演确认。唯一真源 standards/one_shot_generation_policy.json。"
+      ],
+      "rule_count": 8,
+      "bytes": 2060
+    },
+    {
+      "phase_id": "7d",
+      "name": "收尾交付",
+      "read_rule": "全部镜头落盘校验通过后交付。只读这一段。",
+      "rules": [
+        "【收尾·本环节即终点】本工作流的最终环节就是本环节：全部镜头视频通过自检并写入 `10-成片` 后，标记本环节 completed 并交付。**返工环节（原 stage8）已砍掉，不存在后续阶段**；发现问题的处理方式是由导演在本环节内直接指定重做哪几镜，重做走红线层的 rollback_and_revision 协议。"
+      ],
+      "rule_count": 1,
+      "bytes": 382
+    }
+  ],
+  "batch_plan": {
+    "batch_unit": "镜头组",
+    "batch_size_rule": "开工时按本环节总组数切批，建议每批 8-12 组，使单批上下文可控；批内按 phase_plan 顺序走完再进下一批。",
+    "phase_plan": [
+      {
+        "order": 1,
+        "phase_id": "7a",
+        "name": "提示词生成期",
+        "read": "读分镜母版与公网URL索引、按引擎路由技能、写提示词、组装多参绑定。只读这一段。",
+        "bytes": 23576
+      },
+      {
+        "order": 2,
+        "phase_id": "7b",
+        "name": "提交前闸门",
+        "read": "发起任何视频请求前必跑的三道闸门。只读这一段。",
+        "bytes": 2775
+      },
+      {
+        "order": 3,
+        "phase_id": "7c",
+        "name": "提交与出片期",
+        "read": "建任务、轮询、单发无重试、下载落地三合一。只读这一段。",
+        "bytes": 2060
+      },
+      {
+        "order": 4,
+        "phase_id": "7d",
+        "name": "收尾交付",
+        "read": "全部镜头落盘校验通过后交付。只读这一段。",
+        "bytes": 382
+      }
+    ],
+    "cross_batch_state": "每批结束把已完成组号/镜号写进 13-工作流文档/阶段状态.json 的 batch_progress；下一批先读它定起点。",
+    "forbid": [
+      "禁止一批用下一批的规则",
+      "禁止把上一批的组重做（除非走 rollback 协议）",
+      "禁止在批内校验时跑 scope=full_film 的自检项（做完全部批次才跑）"
+    ]
+  },
+  "stage_meta": [
+    {
+      "stage_number": 7,
+      "stage_id": "stage_7_video_prompt_h3_generation_and_download",
+      "name": "视频提示词、H3生成与下载",
+      "purpose": "video_engine=H3时按 MiniMax H3 视频提示词标准化生成技能（h3-prompt-writing），把分镜原文（场景与人物板块作为构图核心）与多参资产引用转换为严格 H3 格式视频提示词（无参考资产用 T2VA 官方三字段，有参考资产用 Ref2VA 官方六段），并把每个参考标签对应的公网URL写入请求体 ref_image_0~n 字段、把说话人声线MP3公网URL写入ref_audio_0~n字段，固定采用 H3 多参生成模式调用项目 H3 接口生成视频；video_engine=H3以外其他引擎（当前 wan3.0 / grok / seedance，后续新增同规则）时**不调用 h3-prompt-writing 技能**，提示词直接用分镜脚本原文+多参数据写入（generic_engine_prompt_rule），请求体按对应引擎接口映射（wan3.0→input.img_url单图驱动；grok→model/prompt/aspect_ratio/quality/duration/image_urls/oversea，模型名由运行配置grok_video_model决定；seedance→model/content[](text+image_url)/ratio/resolution/duration/generate_audio/watermark，模型 ID 由运行配置seedance_model决定）。",
+      "required_inputs": [
+        "stage4分镜原文",
+        "stage5资产",
+        "stage6分镜图",
+        "stage5和stage6按image_return_policy登记的xem8k5_returned_url",
+        "stage6.5通过的公网素材URL索引",
+        "stage5声音圣经声线MP3（voice_id锁定）及voice_returned_url",
+        "项目H3配置",
+        "运行配置video_engine（H3|wan3.0|grok|seedance）",
+        "运行配置grok_video_model（仅 video_engine=grok 时读取，grok|grok1.5）",
+        "运行配置seedance_model / seedance_aspect / seedance_resolution（仅 video_engine=seedance 时读取）",
+        "多米API Grok 视频配置（仅 video_engine=grok 时读取 config/duomi_grok_video_config.json）",
+        "火山引擎方舟 Seedance 配置（仅 video_engine=seedance 时读取 config/seedance_video_config.json）"
+      ],
+      "self_checks_count": 81
+    }
+  ],
+  "stage_policies": {
+    "stage_7_video_prompt_h3_generation_and_download": {
+      "generation_mode": "多参生成",
+      "skill_source": "embedded_skills.video_prompt_skill_router（按 video_engine / seedance_model 路由到唯一一套视频提示词技能：H3→video_generation_extension（h3-prompt-writing）；seedance2.5→video_prompt_skill_seedance25；其余→video_prompt_skill_generic）",
+      "four_character_policy": {
+        "selected_option": "A",
+        "rule": "人物资产无数量上限：镜头中出现4个及以上需要独立资产的人物时，全部挂载为<Subject N>并写入ref_image，不删人、不降级背景人物、不因人数拆镜。",
+        "engine_scope": "本策略的人物集合约束（=该镜『场景与人物』字段写明的出场人物=该镜 visible_character_asset_ids）对**全部引擎**一律适用，不因引擎而放宽。原文中出现的 H3 措辞在非 H3 引擎下按等价字段映射执行：『人物资产无数量上限、4 人及以上全部挂载、不删人不降级背景人物、不因人数拆镜』的约束对全部引擎适用。『挂载为 <Subject N> 并写入 ref_image』为 H3 语法；非 H3 引擎改为按出场顺序写入各自的参考图数组：grok=image_urls；seedance=content 中 role=reference_image 的 image_url 数组（seedance2.5 组级提交时，参考图同时包含组内各镜分镜图与出场角色资产图，按镜头组清单登记的reference_image_order 排列）。不产出 Subject 编号，不因非 H3 而删除或降级人物。"
+      },
+      "task_binding": {
+        "selected_option": "B",
+        "file": "13-工作流文档/API任务索引.json",
+        "binding_key": "shot_id",
+        "fields": [
+          "scene_id",
+          "shot_id",
+          "prompt_version",
+          "task_id",
+          "status",
+          "submitted_at",
+          "request_file",
+          "output_file",
+          "retry_of",
+          "xem8k5_returned_url",
+          "h3_returned_video_url",
+          "ref_image_fields",
+          "ref_audio_fields",
+          "voice_id_list",
+          "shot_group_id",
+          "shot_ids",
+          "shot_time_ranges"
+        ],
+        "accepted_statuses": [
+          "queued",
+          "running",
+          "succeeded"
+        ],
+        "status_normalization": "result接口返回的大写状态（QUEUED/RUNNING/SUCCESS）在写入API任务索引时归一化为小写（queued/running/succeeded）记录；终态判定以接口大写SUCCESS为准",
+        "return_field_note": "xem8k5_returned_url记录图像任务返图公网URL；h3_returned_video_url记录视频任务结果URL；ref_image_fields记录该镜头实际写入的ref_image字段名与URL清单；ref_audio_fields记录该镜头实际写入的ref_audio字段名与声线MP3公网URL清单；voice_id_list记录本镜说话人voice_id（与ref_audio顺序一一对应），闭合返图链路",
+        "rules": [
+          "create返回task_id后立即按镜号写入API任务索引。",
+          "镜号存在queued或running任务时禁止重复创建，只查询原task_id。",
+          "镜号存在succeeded任务时优先下载原结果。",
+          "failed、cancelled或error任务可在确认终止后创建新任务，并记录retry_of。",
+          "简化方案只按镜号绑定task_id，不使用请求哈希。",
+          "seedance2.5 项目：创建任务后按 shot_group_id 写入 API 任务索引（同一组已有 queued/running 任务时禁止重复创建，只查询原 task_id；已 succeeded 时优先下载原结果），并同步登记 shot_ids 与 shot_time_ranges。"
+        ],
+        "binding_key_rule": "绑定键随视频单元粒度切换，由运行配置 video_engine / seedance_model 决定：H3 / wan3.0 / grok / seedance 且 seedance_model=seedance2.0 → 绑定键 = shot_id（一镜一任务）；seedance 且 seedance_model=seedance2.5 → 绑定键 = shot_group_id（一组一任务，一个镜头组=一个视频）。seedance2.5 的索引条目必须同时写入 shot_group_id（绑定键）、shot_ids（组内含镜有序清单）、shot_time_ranges（各镜在组视频中的起止秒，形如 [{shot_id,start_second,end_second}]），字段缺失视为该任务未完成登记。"
+      },
+      "failure_status": "单镜失败设needs_revision并保留其他成功视频；不可恢复错误设failed。本阶段全部镜头视频通过自检并落盘10-成片后必须执行与 stage8 的交接（见 process 末步、mode_behavior 与 next_stage），禁止以本阶段通过作为整条工作流终点。",
+      "character_identity_binding_policy": {
+        "subject_contract": "<Subject N>编号顺序必须与该镜分镜脚本『场景与人物』字段中出场人物（角色正式名（asset_id））书写顺序一致（=visible_character_asset_ids顺序）；每个Subject定义必须标注对应asset_id，禁止只用角色名定义Subject。",
+        "ref_image_contract": "ref_image_0~n顺序必须与subject_definitions顺序完全对应；URL只能按asset_id从公网素材URL索引精准提取。",
+        "ref_audio_contract": "ref_audio_0~n顺序必须与本镜说话顺序一致；URL只能按说话人voice_id从公网素材URL索引精准提取对应声线MP3的voice_returned_url。",
+        "ledger": "每镜生成subject_id→asset_id→speaker_id→voice_id→ref_image_url→ref_audio_url对账表，写入13-工作流文档/API任务索引.json。",
+        "triple_check": "提交H3前核对：stage3剧本段落出场人物与stage4场景人物清单为防漏超集基准（仅作参照）；当前subject_definitions人物asset_id集合必须=该镜『场景与人物』字段出场人物集合=visible_character_asset_ids；剧本/清单要求入画但『场景与人物』漏写→回stage4返修；subject中出现『场景与人物』之外的人物→多余阻断。",
+        "dialogue_check": "台词行(Sx)必须与对应Subject的asset_id及说话人ID映射一致；说话人voice_id必须与该Subject的asset_id对应声线一致。",
+        "engine_scope": "本策略的人物集合约束（=该镜『场景与人物』字段写明的出场人物=该镜 visible_character_asset_ids）对**全部引擎**一律适用，不因引擎而放宽。原文中出现的 H3 措辞在非 H3 引擎下按等价字段映射执行：『<Subject N> / subject_definitions』为 H3 语法，非 H3 引擎不产出 Subject，改为：wan3.0=input.img_url 只传该镜分镜图；grok=image_urls 按『场景与人物』出场顺序排列；seedance=content 中 image_url 数组按『场景与人物』出场顺序排列（role 一律 reference_image；v1.24.13 起不传分镜图）。『ref_audio_contract』（声线顺序）仅 H3 适用——非 H3 引擎均不传 ref_audio，该子契约对非 H3 引擎不适用，但『人物顺序必须与场景与人物字段书写顺序一致』的排序约束照常适用。对账表 ledger 与三重核对 triple_check 在非 H3 引擎下同样执行（核对对象为各引擎对应的参考图数组顺序）。"
+      },
+      "overlimit_storyboard_video_policy": {
+        "trigger": "读取镜头标记multi_reference_overlimit_composite=true时触发。",
+        "input_rule": "对应视频只使用该镜头第二阶段最终分镜图final_storyboard_url作为唯一ref_image；不再垫加任何角色、场景、道具或其他人物资产。",
+        "prohibition": "禁止把中间合成图、原始角色资产图、场景资产图或其他人物资产一并传入H3；禁止追加Subject对应角色资产作为参考图。",
+        "check": "H3请求体ref_image字段必须恰好1个，值为final_storyboard_url；实际请求与标记写入API任务索引。",
+        "engine_scope": "本策略的人物集合约束（=该镜『场景与人物』字段写明的出场人物=该镜 visible_character_asset_ids）对**全部引擎**一律适用，不因引擎而放宽。原文中出现的 H3 措辞在非 H3 引擎下按等价字段映射执行：本策略『超限合成镜只使用最终分镜图作为唯一参考图、禁止垫加任何人物/场景/道具资产』的核心约束对全部引擎适用。H3 的『ref_image 恰好 1 个』在非 H3 引擎下等价为：wan3.0=input.img_url 单图（天然满足）；grok=image_urls 只放 1 条（该镜分镜图）；seedance=content 中 image_url 只放资产参考图（role=reference_image）。标记 multi_reference_overlimit_composite=true 的镜在非 H3 引擎下同样禁止追加角色/场景/道具参考。"
+      },
+      "index_fields": [
+        "multi_reference_overlimit_composite",
+        "composition_stage",
+        "source_asset_ids",
+        "final_storyboard_url"
+      ],
+      "visible_character_video_binding_policy": {
+        "source": "该镜分镜脚本『场景与人物』字段写明的出场人物（角色正式名（asset_id），=该镜visible_character_asset_ids）是视频Subject与角色ref_image的唯一人物来源；场景全体在场但未入画人物不得进入视频输入。",
+        "subject_set": "视频Subject中的人物asset_id集合必须与该镜实际入画人物集合完全一致；每个Subject恰好对应自己的角色asset_id。",
+        "ref_image_set": "普通镜头：每个实际入画人物的角色资产URL逐一写入对应ref_image；不得一张图代替两个人。多参超限合成镜头：按overlimit规则仅使用最终分镜图1张。",
+        "blocking": "分镜实际入画人物数、Subject人物数、角色ref_image数量任一不一致，立即记录mismatch_asset_id并阻断H3。",
+        "sole_source": "视频Subject与角色ref_image的唯一人物数据源是该镜分镜脚本『场景与人物』字段写明的出场人物（=visible_character_asset_ids）；场景人物清单只作超集校验基准，禁止从清单整抄或全量挂载（防多绑）；每镜绑定前逐镜比对『场景与人物』出场人物集合、visible集合、Subject人物asset_id集合、角色ref_image数量四者必须一致（防漏绑），任一不一致记录mismatch_asset_id并阻断。",
+        "presence_not_bind": "场景中在场但未入画的人物不进入Subject与ref_image；即使其资产URL已verified也不得挂载。",
+        "engine_scope": "本策略的人物集合约束（=该镜『场景与人物』字段写明的出场人物=该镜 visible_character_asset_ids）对**全部引擎**一律适用，不因引擎而放宽。原文中出现的 H3 措辞在非 H3 引擎下按等价字段映射执行：『阻断H3』→ 阻断该镜（该组）的视频任务提交；『角色ref_image』→ wan3.0=不分人物参考（单图驱动，人物一致性由该镜分镜图承载）、grok=image_urls 数组、seedance=content 中 role=reference_image 的 image_url 数组（seedance2.5 为组级：组内各镜资产图按 人物→场景→道具 去重后传入；v1.24.13 起不传分镜图、不设 first_frame）。非 H3 引擎下同样禁止把场景人物清单中的未入画人物挂进参考图。"
+      },
+      "engine_routing_policy": {
+        "selected_option": "A",
+        "source": "运行配置.json的video_engine字段（启动交互第一问，H3|wan3.0|grok|seedance四选一，未选默认H3；选择grok时由条件追问 grok_video_model 决定具体 grok 模型，选择seedance时由条件追问 seedance_model / seedance_aspect / seedance_resolution 决定模型、画幅与分辨率；分辨率选项随该选择联动，且grok组、seedance组与H3/wan3.0组分开发问）",
+        "h3_route": "video_engine=H3时：完全按本阶段原H3规则执行（**唯一调用 h3-prompt-writing 视频提示词技能的引擎**：ref_image_0~n多参+ref_audio声线+任务索引绑定），分辨率限 h3_interface_tier 对应档位组内取值（standard_4：768p竖/1080p竖/768p横/1080p横 四选一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 六选一，必须带 (宽*高) 后缀），不读取video_api_wan3_0、video_api_grok与video_api_seedance。",
+        "wan3_0_route": "video_engine=wan3.0时：提示词不再按h3-prompt-writing生成，直接用分镜原文+分辨率+多参作为视频提示词写入（generic_engine_prompt_rule：分镜原文逐字保留+最上方[镜号]|持续时长|resolution行+多参@引用与URL标注，禁止英文改写、禁止 H3 官方结构（T2VA 三字段 / Ref2VA 六段））；请求体用video_api_wan3_0字段映射（model/input.prompt=该提示词全文/input.img_url=该镜分镜图公网URL/parameters.size/parameters.duration，X-DashScope-Async异步，轮询tasks接口至SUCCEEDED后下载）；ref_image多参与ref_audio声线不进入请求体；API任务索引仍按shot_id绑定task_id，ref_image_fields记录img_url实际值、ref_audio_fields为空并标注engine=wan3.0。",
+        "grok_route": "video_engine=grok时：完全走 api_integration.video_api_grok（多米API Grok 视频，POST /v1/videos/generations）；提示词同样走 generic_engine_prompt_rule（分镜原文逐字保留+最上方[镜号]|持续时长|resolution行+多参@引用与URL标注，禁止英文改写、禁止 H3 官方结构（T2VA 三字段 / Ref2VA 六段））；请求体字段映射为 model（由运行配置 grok_video_model 决定：grok→\"grok-video\"、grok1.5→\"grok-video-1.5\"）/ prompt=该镜提示词全文 / aspect_ratio=运行配置project_resolution原值（\"16:9\"或\"9:16\"）/ quality=\"720p\"（grok系列仅720P，固定值不可改） / duration=该镜持续时长（秒，1-15，按stage7时长映射） / image_urls=[该镜分镜图公网URL]（需要角色/场景参考时按已验证公网URL顺序追加）/ oversea=false；异步返回 {\"id\": \"...\"} 作为task_id，轮询 GET /v1/tasks/{task_id} 至完成态后下载；不传ref_audio（grok接口无音频输入）；API任务索引按shot_id绑定task_id，ref_image_fields记录image_urls实际值、ref_audio_fields为空并标注engine=grok。",
+        "seedance_route": "video_engine=seedance时：完全走 api_integration.video_api_seedance（火山引擎方舟，POST https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks）；不调用 h3-prompt-writing，一律禁止输出 H3 官方结构（T2VA 三字段 / Ref2VA 六段）。**本引擎按运行配置 seedance_model 分两档，两档的提示词来源、提交单位与绑定键都不同，必须分支执行**：①【seedance2.0】提示词走 generic_engine_prompt_rule（分镜脚本原文逐字保留 + 最上方 [镜号]|持续时长：X秒|resolution 行 + 多参@引用与URL标注）；**提交单位=单镜**，content 首项 {\"type\":\"text\",\"text\":该镜提示词全文}，duration=该镜持续时长（4-15 秒），产物命名 {shot_id}_视频_v{n}.mp4，API任务索引按 **shot_id** 绑定 task_id。②【seedance2.5】**不适用 generic_engine_prompt_rule**，按本阶段 process[04]、process[34]、process[35] 与 prompt_skill_routing_rule 执行：提示词走 embedded_skills.video_prompt_skill_seedance25（时间轴标记的镜头组原文+多参）；**提交单位=镜头组**，先读 06-分镜/01-分镜管线/镜头组清单.json，content 首项 {\"type\":\"text\",\"text\":该组组提示词全文}（组提示词最上方为 [组ID]|组总时长：X秒|resolution 行，其后组内各镜分镜原文按镜序完整拼接、每镜原文前均带「第{S}秒-第{E}秒：」时间区间标注，区间连续无空档无重叠、末镜结束秒=组总时长），duration=**组总时长**（4-28 秒，超限即阻断并回 stage4 拆组），产物命名 {shot_group_id}_视频_v{n}.mp4，API任务索引按 **shot_group_id** 绑定 task_id 并记录组内含镜清单与各镜时间区间；stage8 抽卡与全路重做同样以组为单位（抽卡即把原组提示词逐字复用再提交一次）。两档共同项：model 由运行配置 seedance_model 决定（seedance2.0→\"doubao-seedance-2-0-260128\"、seedance2.5→\"doubao-seedance-2-5-260628\"）；content 数组中 text 项之后为资产参考图 {\"type\":\"image_url\",\"image_url\":{\"url\":该资产图公网URL},\"role\":\"reference_image\"}（2.5 为组级：组内各镜资产图按 人物→场景→道具 去重后追加；v1.24.13 起不传分镜图、不设 first_frame）；ratio=运行配置seedance_aspect（\"16:9\"或\"9:16\"）；resolution=运行配置seedance_resolution的小写形式（\"480p\"|\"720p\"|\"1080p\"）；generate_audio 按项目配置（默认true；注意其音色不受stage5声线圣经约束）；watermark=false；异步返回 task.id 作为task_id，轮询 GET https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/{task_id} 至 succeeded 后下载 content.video_url；两档均不传 ref_audio（该接口无 ref_audio 输入，声音由模型原生生成）；API任务索引的 ref_image_fields 记录 content 中 image_url 实际值、ref_audio_fields 为空并标注 engine=seedance。",
+        "fallback_rule": "所选引擎配置缺失或接口不可用时写入输入缺失清单并暂停stage7，不得静默切换到另一引擎；用户明确要求切换引擎时更新运行配置video_engine（grok还需同步更新grok_video_model；seedance还需同步更新seedance_model/seedance_aspect/seedance_resolution）后重新路由。",
+        "non_override_rule": "wan3.0、grok、seedance均为新增并行接口，本工作流任何章节不得因接入新引擎而修改或删除H3的video_api规则、ref_image/ref_audio绑定与声线圣经流程；四个引擎的配置、提示词规则与请求体映射互不覆盖。",
+        "prompt_skill_routing_rule": "提示词技能硬分流（经 embedded_skills.video_prompt_skill_router 路由，三套互斥、禁止相互调用）：video_engine=H3 → 加载 embedded_skills.video_generation_extension（h3-prompt-writing，输出 Ref2VA 官方六段或 T2VA 官方三字段）；video_engine=seedance 且 seedance_model=seedance2.5 → 加载 embedded_skills.video_prompt_skill_seedance25（时间轴标记的镜头组原文+多参，组为视频单元）；其余全部情况（wan3.0 / grok / seedance2.0 / 后续新增引擎）→ 加载 embedded_skills.video_prompt_skill_generic（分镜原文+多参，单镜为视频单元）。非H3引擎一律禁止调用 h3-prompt-writing、禁止输出 H3 官方结构。"
+      },
+      "next_stage": "stage_8_revision_confirmation_and_redo",
+      "mode_behavior": {
+        "auto": "本阶段全部镜头视频通过自检并落盘10-成片后，自动进入 stage_8_revision_confirmation_and_redo 并暂停等待用户答复（该问答是用户决策闸门，不因 auto 模式自动跳过，也不得把本阶段通过当作整条工作流收尾）。",
+        "manual": "本阶段通过自检后暂停；用户要求继续时进入 stage_8_revision_confirmation_and_redo 并立即提问，同样不得跳过该问答。",
+        "album_semiauto": "本阶段全部镜头视频通过自检并落盘10-成片后，自动进入 stage_8_revision_confirmation_and_redo 并暂停等待用户答复（同上，不得跳过该问答）。"
+      },
+      "reference_input_binding_rule": {
+        "source": "H3 视频请求 ref_image / ref_audio 的字数上限与超限裁剪规则；上限口径为 2026-09-29 AutoDL 实测，非文档记载。",
+        "limits": {
+          "note": "【v1.24.10 实测校正】原『统一 8 张』口径自本版起废止。",
+          "ref_image_max": {
+            "high_8": 6,
+            "standard_4": 9,
+            "basis": "AutoDL 实测：high_8（8分高质量档，平台工作流名『H3六图三音频生视频（高质量音画融合）』）传 ref_image_6 返回『存在未定义的参数』；standard_4（4分低价档，平台工作流名『H3多图多音频生视频』）传 ref_image_9 返回同一错误。参数必须从 ref_image_0 起连续传递。"
+          },
+          "ref_audio_max": {
+            "high_8": 3,
+            "standard_4": 3,
+            "required": {
+              "high_8": "ref_audio_0 硬必填（无台词镜须传静音 MP3 占位）",
+              "standard_4": "ref_audio 非必填"
+            }
+          },
+          "counts": {
+            "character": "无上限（受 ref_image 总额约束）",
+            "prop": "≤2",
+            "scene": "1"
+          }
+        },
+        "ref_image_overlimit_trim_rule": "【v1.24.10 新增·P0 强制裁剪顺序】当本镜 ref_image 总数将超出所在档位上限（high_8 为 6、standard_4 为 9）时，必须按以下优先级裁剪，且只允许裁道具：① 人物参考图必进，一张都不能少；② 场景参考图必进，一张都不能少；③ 分镜图（<Picture N>）必进——它是构图锚点，固定占 ref_image 末位；④ 道具参考图是可裁剪项：按道具在画面中的重要性由低到高依次删除，直到总数落入上限。禁止为避免超限而删除人物、场景或分镜图中任何一项；禁止删除人物/场景/分镜图后保留道具。若『人物 + 场景 + 分镜图』本身就超过档位上限（high_8 需 >6 个必进项、standard_4 需 >9 个必进项），属真实超限，必须报错停下，不得自行取舍。裁剪后必须同步删除该道具在 subject_definitions / retention_analysis / detailed_description 中的全部引用（含 <Subject N> 定义行），保持标签与实际 ref_image 字段一一对应。",
+        "gate": "gates/h3_video_prompt_format_gate.py → H3FMT-C13（P0 阻断）：校验总数不超档位上限、人物/场景/分镜图必进、超限只裁道具、必进项本身超限须停下上报、ref_image_count 与实际条数一致且编号连续。",
+        "mechanical_check_ref": "stage_workflow(7).self_checks(72)"
+      }
+    }
+  },
+  "self_checks": {
+    "count": 81,
+    "items": [
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#0",
+        "text": "每镜提示词最上方已写镜号和该镜头持续时长（[镜号] | 持续时长：X秒），且与该镜头分镜原文一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#1",
+        "text": "视频提示词中已写入项目分辨率（与运行配置project_resolution一致：H3项目为 h3_interface_tier 对应档位的取值之一（standard_4：768p竖/1080p竖/768p横/1080p横 之一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 之一），wan3.0项目为720p竖/1080p竖/720p横/1080p横之一，grok项目为16:9或9:16（grok仅720P），seedance项目为16:9·480P/720P/1080P 或 9:16·480P/720P/1080P）：提示词最上方[镜号] | 持续时长：X秒 | resolution\": XXX 行已实际填写分辨率值，提示词正文画面描述已体现对应画幅方向；当项目为竖屏分辨率（768p竖/1080p竖/720p竖，含grok的9:16与seedance的9:16·*）时，提示词正文同时包含portrait orientation、vertical video、9:16、tall narrow frame等竖屏方向词；当项目为横屏分辨率（768p横/1080p横/720p横，含grok的16:9与seedance的16:9·*）时，正文包含landscape orientation、horizontal wide frame等横屏方向词",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#2",
+        "text": "H3请求duration按该镜头分镜持续时长写入（含1/3余量，**但上限 7 秒**），与提示词最上方的持续时长一致；该镜分镜持续时长本身已在 4-7 秒硬区间内（v1.24.30 起，旧『4-10秒内』口径已废止）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#3",
+        "text": "video_engine=H3时最终提示词严格为H3格式：无参考资产时为 T2VA 官方三字段，有参考资产时为 Ref2VA 官方六段",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#4",
+        "text": "H3项目最终提示词不使用旧式【分镜原文】/【资产引用】结构；仅以 h3-prompt-writing 技能的标准输出结构输出",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#5",
+        "text": "本镜出场人物已按该镜分镜『场景与人物』字段（唯一人物清单）核对并全部挂载，无漏人、无多写；『场景与人物』字段人物数量与画面内容一致且逐人带asset_id；剧本版只作防漏核对，未把剧本在场但『场景与人物』未写的人物挂载为Subject",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#6",
+        "text": "分镜原文中的动作、运镜、机位、光影、声音和台词全部被保留为H3描述，未改变动作、时序、角色关系、景别、机位、场景结构和台词原文",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#7",
+        "text": "人物、道具、场景资产已正确转成<Subject N>/<Picture N>参考标签，先定义后使用，各章节含义一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#8",
+        "text": "场景分镜图只用于构图、机位、空间结构和光影，不替代动作叙事",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#9",
+        "text": "每个多参@引用均在AutoDL工作流请求体中有对应的ref_image_0~n字段，且字段值实际携带同一张已验证公网图片；仅出现@文本而没有ref_image字段时自检失败并阻断提交",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#10",
+        "text": "@引用顺序、Subject/Picture编号、ref_image编号（0~n）和公网URL索引顺序完全一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#11",
+        "text": "H3请求体中的ref_image_0~n字段值与asset_bindings一一对应，每个值均为stage6.5已校验的公网URL（xem8k5_returned_url优先），不存在本地路径或空值",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#12",
+        "text": "本镜头实际使用的ref_image字段名与URL清单已回写API任务索引，返图链路可追溯",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#13",
+        "text": "有说话人的镜头，H3请求体中的ref_audio_0~n字段值与说话人voice_id一一对应，每个值均为该角色声线MP3的verified公网URL（voice_returned_url），不存在本地路径、空值或错配声线",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#14",
+        "text": "画外音台词镜（说话人不在visible_character_asset_ids中）：该台词未写入提示词、未创建<Subject N>、未传其ref_audio，镜头按无台词镜处理并包含全员闭口声明；丢弃明细已在跑批日志记录可复查",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#15",
+        "text": "无说话人镜头未传ref_audio；ref_audio数量（0~3）与镜头实际说话人数一致，且与voice_id_list顺序一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#16",
+        "text": "每个说话人voice_id均能在说话人ID映射表与08-分镜公网URL/公网素材URL索引.json中查到对应的声线MP3 verified URL；查不到即阻断并记录voice_input_missing",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#17",
+        "text": "人物资产无上限且全部出场人物均已挂载为<Subject N>；道具≤2个、场景1个",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#18",
+        "text": "资产与分镜一一对应，同场景资产一致，无错配混用",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#19",
+        "text": "所有reference_image素材均来自stage6.5通过的公网URL索引，不存在本地路径冒充公网URL，请求体不包含first_frame或last_frame",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#20",
+        "text": "台词已转换为<Subject N> (S1) says with [语气]: <d>[Chinese] 原文</d>，声线和语气在<d>外，台词原文逐字保留不翻译",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#21",
+        "text": "台词中的固定声线描述（with [fixed voice description]）与固定声线圣经锁定版本逐字一致，来源可追溯，未自行编写或改写",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#22",
+        "text": "提示词中每个(S1)/(S2)说话人ID均与02-角色/04-说话人ID映射表中的角色对应，无漏配、无错配、无临时编号",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#23",
+        "text": "无台词镜头明确闭嘴、无口型、无人声，未生成对白行",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#24",
+        "text": "overall_soundscape只总结环境音和动作声，不重复对白；non_diegetic_music无配乐时为N/A",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#25",
+        "text": "task_id已绑定镜号",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#26",
+        "text": "视频已下载且可播放",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#27",
+        "text": "视频内容、人物动作、镜头连续性与分镜原文一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#28",
+        "text": "H3提示词已保留分镜的连贯性信息（站位与参照物关系、相对位置/轴线、动作三阶段、光影时间、情绪、镜间衔接），未丢失未改写；站位描述与该场景锁定站位或走动后更新的整体站位一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#29",
+        "text": "H3项目提示词格式未变：T2VA 官方三字段或 Ref2VA 官方六段结构、最上方[镜号]|持续时长|resolution\"：（分辨率值与运行配置project_resolution一致——H3项目为 h3_interface_tier 对应档位的取值之一（standard_4：768p竖/1080p竖/768p横/1080p横 之一；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440) 之一），wan3.0项目为720p竖/1080p竖/720p横/1080p横之一，grok项目为16:9或9:16之一，seedance项目为{aspect}·{resolution}之一）、台词转换句式均保持原格式",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#30",
+        "text": "H3项目提示词按 h3-prompt-writing 技能规范生成：模式选择正确（本工作流固定Ref2VA多参/无资产T2VA）、构图设定以分镜「场景与人物」板块开篇（站位锁+参照物零偏差）、五大要素完整（构图/动作/运镜/音效/台词）、标签跨章节一致、时长 4-7 秒匹配（**v1.24.30 起单镜上限 7 秒**，旧『最长10秒』口径已废止）、分辨率与project_resolution一致",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#31",
+        "text": "每个<Subject N>均标注asset_id，且与该镜分镜『场景与人物』字段出场人物、角色正式名、speaker_id映射一致；禁止只用角色名定义Subject。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#32",
+        "text": "ref_image_0~n顺序与Subject编号顺序完全对应；每个URL按asset_id精准提取且与URL索引身份一致；多着装角色的ref_image版本已按character_asset_folder_lock_policy与该镜画面内容着装描述核对，无版本错配",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#33",
+        "text": "subject_definitions人物asset_id集合=该镜『场景与人物』字段出场人物集合=visible_character_asset_ids；stage3剧本与stage4场景人物清单仅作防漏超集（剧本要求入画但字段漏写→回stage4返修），未把清单全体在场人物整抄为Subject。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#34",
+        "text": "台词行(S1)/(S2)与对应Subject的asset_id、speaker_id三者一致；不一致即阻断H3提交。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#35",
+        "text": "subject_id→asset_id→speaker_id→voice_id→ref_image_url→ref_audio_url对账表已写入13-工作流文档/API任务索引.json。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#36",
+        "text": "多参超限合成镜头的视频请求仅包含1个ref_image，且该URL为第二阶段final_storyboard_url；未携带任何角色资产或其他参考图。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#37",
+        "text": "多参超限镜头的最终分镜图标记、final_storyboard_url与H3实际请求ref_image一致。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#38",
+        "text": "普通视频镜头的visible_character_asset_ids、该镜『场景与人物』字段出场人物asset_id集合、Subject人物asset_id集合、角色ref_image集合完全一致，数量相等且每个入画人物恰好一项；禁止一张人物图代替两个人。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#39",
+        "text": "场景中在场但未入画人物（未写入该镜『场景与人物』字段）未进入Subject或ref_image；多人聚焦镜头的画面出镜集合与视频输入集合一致。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#40",
+        "text": "本镜视频绑定仅以该镜分镜脚本『场景与人物』字段写明的出场人物（=visible_character_asset_ids）为唯一人物来源；场景人物清单未直接作为绑定来源，无多绑、无漏绑（『场景与人物』人物集合/Subject集合/ref_image数量三者一致）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#41",
+        "text": "blocked镜头已跳过提交并写入blocked_镜头清单.json，未用无效URL提交、未阻塞其他镜头跑批",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#42",
+        "text": "视频引擎路由与运行配置video_engine一致：H3请求体含ref_image/ref_audio且不读wan/grok/seedance配置；wan3.0请求体为input.img_url单图驱动且不传ref_audio；grok请求体为model/prompt/aspect_ratio/quality=720p/duration/image_urls/oversea=false且不传ref_audio，model值由运行配置grok_video_model映射为grok-video或grok-video-1.5；seedance请求体为model/content[](type=text与type=image_url)/ratio/resolution/duration/generate_audio/watermark且不传ref_audio，model值由运行配置seedance_model映射为 doubao-seedance-2-0-260128 或 doubao-seedance-2-5-260628；未发生静默切引擎，未跨引擎混用请求体字段",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#43",
+        "text": "提示词技能分流硬规则：已按 video_prompt_skill_router 路由到唯一一套视频提示词技能并记录路由结果——video_engine=H3 时加载 h3-prompt-writing 并输出 H3 格式（Ref2VA 官方六段或 T2VA 官方三字段，且字段名、字段顺序、章节语法与官方 Prompt Writing Guide 逐字一致）；video_engine=seedance 且 seedance_model=seedance2.5 时加载 seedance2.5视频提示词技能（组提示词=时间轴标记的镜头组原文+多参）；其余情况（wan3.0/grok/seedance2.0/后续新增）加载通用视频提示词技能（分镜原文+多参，单镜为单元）。三套未混用、未相互调用；非H3项目未出现 H3 官方结构，非seedance2.5项目未出现组级时间轴提示词",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#44",
+        "text": "通用视频提示词技能口径正确（video_engine为wan3.0/grok/seedance2.0/后续新增之一时）：每镜提示词=该镜分镜卡原文逐字（镜号/持续时长/机位/景别/光影/场景与人物/画面内容/运镜方式/音效/台词齐全）+最上方分辨率行+多参@引用与公网URL标注；无英文改写、无缩写概括、无额外约束段落；未使用 H3 官方结构、未使用组级时间轴",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#45",
+        "text": "seedance2.5视频提示词技能口径正确（video_engine=seedance 且 seedance_model=seedance2.5 时）：组提示词第1行为[组ID]|组总时长|resolution；组内每镜原文前均有时间区间标注且第1镜起于第1秒、区间连续无空档无重叠、末镜结束秒=组总时长；区间与镜头组清单逐镜一致；组内分镜原文无删镜无合并无概括",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#46",
+        "text": "【仅 seedance2.5 项目】已按镜头组为单位提交：请求体 prompt 为该组组提示词（最上方[组ID]|组总时长|resolution行；其后组内各镜分镜原文按镜序完整拼接，**每镜原文前均带时间区间标注「第{S}秒-第{E}秒：」**，区间连续无空档无重叠、末镜结束秒=组总时长、与镜头组清单逐镜一致；无删镜、无合并、无概括）；content 中图片项全部为资产图（人物→场景→道具，按镜序去重）且 role=reference_image、不含分镜图（v1.24.13）；duration=组总时长且落在 4-28 秒内（v1.22.0）；产物命名 {shot_group_id}_视频_v{n}.mp4；API任务索引以 shot_group_id 绑定 task_id 并记录含镜清单、各镜时间区间与 content 中 image_url 实际值；stage8 返工以组为单位",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#47",
+        "text": "【仅 seedance2.0 项目】仍以单镜为视频单元逐镜提交，产物命名 {shot_id}_视频_v{n}.mp4；未误用组级提交路径、未引用镜头组清单.json",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#48",
+        "text": "video_engine=seedance时：请求体model与运行配置seedance_model严格一致（seedance2.0→\"doubao-seedance-2-0-260128\"、seedance2.5→\"doubao-seedance-2-5-260628\"）；ratio与运行配置seedance_aspect（16:9|9:16）完全一致；resolution与运行配置seedance_resolution一致且为小写（480p/720p/1080p）；duration在对应模型上限内（2.0 单镜 4-15 秒、2.5 组级 4-28 秒，超限已按规则处理并记录WARNING）；content数组中至少含一项type=text（提示词全文）与一项type=image_url（资产参考图，role=reference_image），其余参考图role=reference_image且均为stage6.5已验证公网URL；watermark=false；未向seedance请求体传入ref_audio、input.img_url、aspect_ratio、quality 等其它引擎字段",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#49",
+        "text": "每一镜/每一组的持续时长满足台词时长规则（dialogue_pacing_rule，1秒5字）：有台词镜 ≥ ceil(字数÷5) 秒且 ≤7 秒（超 7 秒必须拆镜）；**通用分镜、H3 与 seedance2.5 项目的单镜持续时长一律落在 4-7 秒硬区间内（v1.24.30 起）**；seedance2.5 组总时长=组内各镜之和且≤28秒（v1.22.0）",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#50",
+        "text": "视频提示词与视频单元口径同 stage4 的分镜技能路由结果一致（H3→单镜、H3提示词技能；通用分镜引擎→单镜、通用格式提示词；seedance2.5→镜头组、组提示词），无跨口径混用",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#51",
+        "text": "video_engine=grok时：请求体model与运行配置grok_video_model严格一致（grok→\"grok-video\"、grok1.5→\"grok-video-1.5\"）；quality固定\"720p\"（未出现480p/1080p）；aspect_ratio与运行配置project_resolution（16:9|9:16）完全一致；duration等于该镜分镜持续时长且不超过15秒；image_urls均为stage6.5已验证公网URL（首图为该镜分镜图）；oversea=false；未向grok请求体传入ref_audio或H3专用字段；视频提示词仍为generic_engine_prompt_rule通用格式，未误用 H3 官方结构（T2VA 三字段 / Ref2VA 六段）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#52",
+        "text": "video_engine=grok的项目已按 live_test_rule 完成至少一次端到端 live test（create→轮询query→取得视频URL→下载本地），实测确认的查询路径、完成/失败状态字段、视频URL字段与鉴权头格式已回写 api_integration.video_api_grok；live test 未通过前未整批提交stage7",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#53",
+        "text": "非H3引擎项目提示词格式正确：每镜提示词=分镜原文逐字保留（镜号/持续时长/机位/景别/光影/场景与人物/画面内容/运镜/音效/台词原文）+最上方分辨率行+多参@引用与URL标注，无英文改写、无 H3 官方结构（T2VA 三字段 / Ref2VA 六段）、无分镜叙事信息增删",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#54",
+        "text": "H3提示词严格符合 MiniMax 官方提示词规范：Ref2VA 六段字段名逐字为 subject_definitions / summary / retention_analysis / detailed_description / overall_soundscape / non_diegetic_music（无参考资产时为 T2VA 三字段 integrated_multimodal_description / overall_soundscape / non_diegetic_music），未改名、未翻译、未调序、未省略；summary 以方括号任务类型前缀开头（reference generation / keyframe completion / video editing / video continuation / audio reuse / audio reference，多类型用「 + 」连接且不重复）；retention_analysis 对每个标签使用官方固定英文保留标记（可见内容 fully_preserved / partially_preserved / attribute_transfer / strong_reference；音频 fully_copy / partially_copy / reference / strong_reference），且不出现 (Sx)；detailed_description 的风格句写在 [Shot 1] 之前，含 [Shot N] 镜头标记与切镜时间，运镜使用官方词表（运动类型 + 需要时的幅度 with small/large amplitude 与速度 at slow/fast speed）写成句内英文动作句；台词为 XXX (Sx), … <d>[Language] 原文</d> 且声线语气在 <d> 之外；未出现旧版自拟填法、无标记段落堆砌或中文运镜词",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#55",
+        "text": "H3提示词未使用 I2VA / FL2VA / L2VA 首尾帧模式（本工作流 stage7 禁止首尾帧），也未在请求体中传 first_frame / last_frame；若出现即阻断",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#56",
+        "text": "本阶段通过后已执行与 stage8 的交接：阶段状态.json 的 current_stage 已置为 stage_8_revision_confirmation_and_redo、stage_status 已置 in_progress、next_action 已写明等待用户答复；已进入 stage8 按其 questions 提问；无『stage7 通过即整条工作流结束』『视频出片即收尾』的情形",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#57",
+        "text": "【仅 seedance2.5 项目】组内切镜已交给模型：组提示词内除每镜前的「第{S}秒-第{E}秒：」时间区间标注外，未出现任何自造衔接词/过渡语/转场描述（未命中『随后镜头切换至』『紧接着』『切到下一镜』等表述），组内各镜原文独立成段、字段齐全，未被改写成一条连续描述",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#58",
+        "text": "【仅 seedance2.5 项目】组级总体运镜已落实：组提示词内整组只有一条运镜表述，未逐镜各写『运镜方式』、未并列多个运镜名；该运镜以焦点迁移路径书写（含 `焦点：[对象]（[具体可见状态]）`）并按每镜时间区间分段对齐；每段运镜属 standard_camera_movement_system 六类闭集且已逐镜计入固定镜头占比统计（固定占比 50%-60%）；其余分镜原文（镜号/持续时长/机位/景别/光影/场景与人物/画面内容/音效/台词）仍逐字保留",
+        "p0": false,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#59",
+        "text": "【视频面引用齐套（v1.21.29，机检）】正反打/过肩镜的 Subject／ref_image 所引用的场景面资产，必须与该镜所处面一致且两面 URL 均已 verified；同一镜头组内正打镜引用 SCxx_F、反打镜引用 SCxx_B，两镜不得引用同一面；禁止引用未通过校验的面 URL、禁止用基础场景资产顶替、禁止跨组借用其它场景的面资产。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#60",
+        "text": "【视频出片即下载·原子性（v1.21.30，机检，P0）】每个视频任务轮询到成功后，必须在同一动作内下载到10-成片并完成落地校验（文件存在且大小>10KB、容器头签名与格式一致（MP4 检查字节 4-8 为 'ftyp'）、可播放性抽检），才算该镜完成；API任务索引中不得存在『已登记 h3_returned_video_url 但磁盘无对应视频文件』的条目。禁止把视频URL留到后续阶段再取；『URL已取而未落盘』的镜头按下载失败处理并回退重跑。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#61",
+        "text": "【视频参考从『场景与人物』栏全量检测（v1.21.31，机检，P0）】写视频提示词时，必须逐镜读取该镜分镜脚本『场景与人物』字段作为该镜参考绑定的唯一来源：**栏内出现的一切都必须参考**——人物（角色正式名（CHxx））→ <Subject N> 且写入 ref_image；场景（场景正式名（scene_id），正反打/过肩带面ID）→ 对应场景面资产的 ref_image；道具（道具正式名（PRPxx））→ 道具资产的 ref_image。栏内未出现的人物／场景／道具一律不绑定；禁止凭剧本或场景人物清单自行增挂，禁止跳过分镜栏直接绑定，禁止只绑人物而漏绑该镜的场景与道具。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#62",
+        "text": "【道具 Subject 与 ref_image 绑定（v1.21.31，机检，P0）】『场景与人物』栏出现的贯穿全剧道具，必须按 @道具资产图→<Subject N>（或对应 Picture 位）建立参考绑定并写入 ref_image 字段，字段编号与提示词标签定义顺序一一对应；单镜道具 ≤2 个。道具未绑定、绑成人物位或漏绑即阻断该镜提交；不得只把道具写进提示词文本而省略 ref_image 字段。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#63",
+        "text": "【H3 提示词格式合规（v1.21.32，机检，P0）】video_engine=H3 时，每镜提示词必须严格符合 MiniMax 官方 Ref2VA 六段格式：①六段齐全且顺序为 subject_definitions → summary → retention_analysis → detailed_description → overall_soundscape → non_diegetic_music；②字段名逐字照官方，禁止自拟段落名、禁止调换顺序、禁止缺段；③summary 必须以方括号任务类型前缀开头（reference generation 等，多类型用「 + 」连接且不重复）；④retention_analysis 必须使用官方固定英文标记（可见内容 fully_preserved／partially_preserved／attribute_transfer／strong_reference；音频 fully_copy／partially_copy／reference／strong_reference），不得写中文、不得写 (Sx)；⑤detailed_description 中 [Shot 1] 不带时间戳、后续镜头写 [Shot N] At MM:SS.mmm，风格句以 1–2 句英文写在 [Shot 1] 之前；⑥对话写 <d>[Language] 原文</d>、说话人写 (Sx)。格式任一项不合规即该镜提示词不合格。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#64",
+        "text": "【提示词内容必须溯源分镜（v1.21.32，机检，P0）】每镜 H3 提示词的内容必须逐字段来自该镜分镜卡：镜号→[Shot N]、持续时长→切镜时间与描述总时长、机位／景别→构图句、光影→光照描述、场景与人物→Subject 定义与镜内引用、画面内容→镜内主体描述、运镜方式→自然英文运镜句（含类型/幅度/速度）、音效→声音描述、台词→<d> 与 (Sx)。禁止新增分镜卡里没有的人物／场景／道具／动作／情节；禁止把分镜外的剧情想象写进任何一段；禁止用 cinematic／beautiful 等抽象形容词充当描述（官方 Tips for Better Results）。生成后必须能逐段回答「这段信息来自分镜卡哪个字段」。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#65",
+        "text": "【v1.21.35】提示词中出现的每个参考标签（<Subject N>/<Picture N>/<Video N>/<Audio N>）都已在 subject_definitions 段逐条定义（先定义后使用，无无归属标签）；凡引用 <Audio N> 必须有对应定义行（机检 H3FMT-C8）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#66",
+        "text": "【v1.21.35】有台词镜每条台词 <d>…</d> 之后均紧跟闭口声明 After delivering the line, the speaker closes the mouth.；无台词镜写 No character speaks in this shot; all visible mouths remain closed with no lip movement.（机检 H3FMT-C9）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#67",
+        "text": "【v1.21.35】提示词显式声明画面文字纪律（subtitle/caption/on-screen text/watermark 一律不出现）——匾额、长联、招牌只用空白面板或抽象笔触表示，不许 H3 自行烧字（机检 H3FMT-C10）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#68",
+        "text": "【v1.21.35】提示词正文显式写画幅方向（横屏 horizontal 16:9 / 竖屏 vertical 9:16），与头部 resolution 行一致（机检 H3FMT-C11）",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#69",
+        "text": "【v1.24.8·台词前置（机检 H3FMT-C12）】提示词首行追溯行之下第二行必须为台词块（有台词镜 `台词：{角色名}：{台词原文}`，多条分号分隔；无台词镜 `台词：无`），位于官方六段正文之上；台词块文本与该镜 <d> 内台词逐字一致，未与运镜/画面/参数内容混写。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#70",
+        "text": "【v1.24.8·台词前置】提示词渲染顺序正确：首行追溯行 → 第二行台词块 → 官方六段正文 → 多参绑定清单；台词块未挤占或删改官方六段结构。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#71",
+        "text": "【v1.24.10·多参上限与裁剪顺序（机检，P0）】ref_image 数量不得超过所在档位上限：high_8（8分高质量档）最多 6 张、standard_4（4分低价档）最多 9 张（2026-09-29 AutoDL 实测口径，平台工作流名为『H3六图三音频生视频』『H3多图多音频生视频』）。数量超限时，**只允许裁减道具参考图**，且按道具在画面中的重要性由低到高依次删除；**人物参考图、场景参考图、分镜图（<Picture N>，固定占 ref_image 末位）为必进项，一张都不能少**——禁止为避免超限而删除人物、场景或分镜图，禁止删掉必进项却保留道具。若『人物+场景+分镜图』本身就超过档位上限（high_8 >6、standard_4 >9），属真实超限，必须停止并上报，不得自行取舍。裁剪道具后必须同步删除该道具在 subject_definitions／retention_analysis／detailed_description 中的全部引用（含 <Subject N> 定义行），保持标签与 ref_image 字段一一对应。另：常规镜只传分镜图不垫人物/场景（multi_reference_overlimit_composite 退化）仅允许在必进项本身超限时使用。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#72",
+        "text": "【v1.24.12 立规 / v1.24.31 强调】**分镜图即场景参考**：多参组成锁定为 ref_image 只允许「人物 → 道具 → 分镜图」三类，**场景资产图（@SCxx）不得进入 ref_image**（场景与空间一致性由**分镜图**承载——H3 与通用板块同此口径）；人物与分镜图为必进项，超限只裁道具；若『人物+分镜图』本身超限则报错停下交导演裁决。机检：h3_video_prompt_format_gate 的 H3FMT-C13。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#73",
+        "text": "【v1.24.13 立规 / v1.24.31 强调】视频提示词参考图组成已按引擎路线锁定：**通用路线（wan3.0/grok/seedance2.0）**多参 = 人物 → 道具 → 分镜图（**分镜图即场景参考**），不得含场景资产图；**seedance2.5 路线**多参 = 人物 → 场景 → 道具的资产图，**不得含分镜图**（不设 first_frame）；H3 路线沿用 人物 → 道具 → 分镜图（**分镜图即场景参考**；含必进项与道具可裁规则）。机检：video_prompt_ref_composition_gate 的 VPRC-C1/C2（H3 项目自动跳过）。",
+        "p0": false,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#74",
+        "text": "【视频单发（v1.24.20，机检，P0）】每个镜头视频**只允许发起一次付费生成**：提交前必须查 `13-工作流文档/生成台账.json`，该 shot_id + video 已有任一条记录即禁止再提交；提交失败（含 502/隧道 502/网关抖动/读超时/轮询超时/任务 FAILED）一律不自动重提，**禁止在生成链路上实现任何 for/while 重试循环、多层重试、子进程重跑、后台自动补跑**；多路并发时以文件锁 + 唯一 task 文件保证同一 shot_id 单一在途。AI 对成片不满意时禁止自行重跑，须询问导演并由导演逐镜授权。机检：H3FMT-C14 + one_shot_generation_gate（OS-C5/C6）。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#75",
+        "text": "【H3 视频请求参考图绑定（v1.24.25，机检，P0）】发起 H3 生成前必须跑 gates/h3_video_ref_binding_gate.py 且 PASS：①每镜 ref_image 必含分镜图（@S0x_xx_分镜图）且 URL 与 stage6.5 公网素材URL索引同源——**禁止取 stage6 API任务索引里的 PNG 母版地址**；②所有 ref_image URL 一律 .webp；③数量 ≤ 档位上限（high_8=6 / standard_4=9）；④组成顺序为 人物→道具→分镜图（分镜图固定末位）；⑤人物 ref 集合 == 该镜『场景与人物』栏 CHxx 集合；⑥实际请求体回写的 ref_image 字段值必须与提示词清单逐位一致（防『写一套发一套』）。**「提示词里写了 @分镜图」不等于「请求体真垫了分镜图」**，缺任一项即禁止提交该镜 H3。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#76",
+        "text": "【H3 台词行绑定与描述对齐（v1.24.27，机检，P0）】①有台词镜的台词行必须写成 `<Subject N> (Sx), with {该角色固定声线逐字}, says with {当前语气}: <d>[Chinese] 台词原文</d>`——**缺 <Subject N> 绑定或缺说话人 ID 时，H3 无所指，极易把台词说成非中文的乱语音（『鸟语』）**；②说话人 ID (Sx) 必须跨镜唯一且稳定（同一角色全程同一 ID，不同角色不同 ID），禁止所有角色共用 (S1)；③固定声线描述必须从 02-角色/04-说话人ID映射表 的 voice_description 逐字读取，禁止写成占位词；④话外音按画面为准：说话人 asset_id 不在该镜『场景与人物』栏时，该台词不写入提示词；⑤**视频提示词的英文画面描述必须与分镜卡逐镜对齐**——卡里列的角色必须在描述中出现，卡里未列的角色不得出现（此条专治『描述表整体错位一镜』导致的「陌生人脸」「同一个人被复制成两个」）。机检：h3_video_prompt_format_gate 的 H3FMT-C15/C16 与 h3_video_ref_binding_gate 的 REFBIND-C7，**逐镜全量、不得抽样**。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#77",
+        "text": "【分镜图参考强制（v1.24.28，机检，P0）】本阶段任何一次视频生成（含首次生成、失败重发、抽卡、全路重做、单镜返工）在提交前，该镜视频提示词的 ref_image 清单中**必须含有本镜自己的分镜图**（形如 `@S0x_xx_分镜图`，URL 与 stage6.5 索引同源）；**只要有一镜缺分镜图，整批一律不得提交**（不是逐镜跳过、不是先发后补）。提交前必须跑 `gates/h3_video_ref_binding_gate.py` 且 REFBIND-C1（每镜必含分镜图）与 REFBIND-C8（生成器入口护栏）均为 PASS；闸门非 PASS 时**禁止发起任何一条视频请求**，并须把闸门结果文件留档。生成器（stage7 生成脚本）本身必须内置同一判据并在入口处硬拒绝——闸门与生成器两处独立成立，缺一不得提交。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#78",
+        "text": "【单镜上传时长上限 7 秒（v1.24.30，机检，P0）】提交给视频接口的每一镜 duration 必须 ≤7 秒，且与该镜分镜卡的『持续时长』一致（含 1/3 余量时，余量往上取到 7 秒为止）；分镜持续时长本身须在 4-7 秒区间内；任何一镜超过 7 秒即 FAIL，须回 stage4 拆镜。",
+        "p0": true,
+        "scope": "batch"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#79",
+        "text": "【分镜图即场景参考 · 提交多参按栏绑定且全量不抽样（v1.24.31，机检，P0）】**H3 与通用板块（wan3.0/grok/seedance2.0）把分镜图当作场景参考**——场景一致性与空间关系由本镜分镜图承载，因此**场景资产图（@SCxx／SCxx_F／SCxx_B）不得进入 ref_image**，ref_image 只允许「人物 → 道具 → 分镜图」三类（分镜图固定末位）。提交前必须**逐镜全量**（不抽样）读取该镜分镜『场景与人物』栏作为唯一绑定来源：栏内人物（角色正式名（CHxx））→ `<Subject N>` 且写入 ref_image；栏内道具（道具正式名（PRPxx））→ 道具资产图且写入 ref_image；**场景不单独进 ref_image**；栏内没有的一律不得参考。（seedance2.5 路线例外：多参 = 人物 → 场景 → 道具，不得含分镜图。）执行闸门：h3_video_ref_binding_gate（REFBIND-C1/C2/C5/C8）。",
+        "p0": true,
+        "scope": "full_film"
+      },
+      {
+        "id": "stage_7_video_prompt_h3_generation_and_download#80",
+        "text": "【改卡同步提交闸（v1.24.34，机检，P0）】修改分镜卡后提交生成前：卡内每一处目标改动均可检索到，且重建后的提示词文件包含同样的新文本；任一不满足即禁止提交。执行闸门：stage5/7 提交前自检。",
+        "p0": true,
+        "scope": "batch"
+      }
+    ],
+    "p0_ids": [
+      "stage_7_video_prompt_h3_generation_and_download#60",
+      "stage_7_video_prompt_h3_generation_and_download#61",
+      "stage_7_video_prompt_h3_generation_and_download#62",
+      "stage_7_video_prompt_h3_generation_and_download#63",
+      "stage_7_video_prompt_h3_generation_and_download#64",
+      "stage_7_video_prompt_h3_generation_and_download#71",
+      "stage_7_video_prompt_h3_generation_and_download#74",
+      "stage_7_video_prompt_h3_generation_and_download#75",
+      "stage_7_video_prompt_h3_generation_and_download#76",
+      "stage_7_video_prompt_h3_generation_and_download#77",
+      "stage_7_video_prompt_h3_generation_and_download#78",
+      "stage_7_video_prompt_h3_generation_and_download#79",
+      "stage_7_video_prompt_h3_generation_and_download#80"
+    ],
+    "full_film_ids": [
+      "stage_7_video_prompt_h3_generation_and_download#45",
+      "stage_7_video_prompt_h3_generation_and_download#46",
+      "stage_7_video_prompt_h3_generation_and_download#49",
+      "stage_7_video_prompt_h3_generation_and_download#58",
+      "stage_7_video_prompt_h3_generation_and_download#61",
+      "stage_7_video_prompt_h3_generation_and_download#62",
+      "stage_7_video_prompt_h3_generation_and_download#64",
+      "stage_7_video_prompt_h3_generation_and_download#76",
+      "stage_7_video_prompt_h3_generation_and_download#79"
+    ],
+    "p0_count": 13,
+    "full_film_count": 9,
+    "how_to_use": "批内只查 scope=batch 且 p0=true 的项（按 p0_ids 与 items 的 scope 交叉）；全部批次做完后再查 full_film_ids。逐条必过，任一 P0 不过即不得标记 completed。"
+  },
+  "gates": [
+    "gates/h3_video_prompt_format_gate.py（必跑）",
+    "gates/h3_video_ref_binding_gate.py（发起任何视频请求前）",
+    "gates/video_prompt_ref_composition_gate.py（第二道）",
+    "gates/asset_download_atomicity_gate.py（收尾前）",
+    "gates/one_shot_generation_gate.py（单发无重试）"
+  ],
+  "gate_refs": {
+    "h3_prompt_format_gate_ref": "H3 提示词格式闸门：组合包内 gates/h3_video_prompt_format_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/h3_video_prompt_format_gate_闸门结果_v{version}.json 与 _闸门汇总_v{version}.md。仅对 video_engine=H3 的项目执行，逐镜校验官方 Ref2VA 六段结构：①六段齐全且顺序正确；②字段名逐字照官方（无自拟段落名）；③summary 有方括号任务类型前缀；④retention_analysis 使用官方固定英文标记且不含 (Sx)；⑤[Shot 1] 无时间戳、后续为 [Shot N] At MM:SS.mmm、风格句在 [Shot 1] 之前；⑥对话 <d>[Language]…</d> 与说话人 (Sx) 格式合法；⑦无 cinematic／beautiful 类抽象词充当描述（官方 Tips）。任一 FAIL 即该镜提示词不合格，禁止提交 H3。执行时机：stage7 提示词写入 07-分镜提示词 之后、发起 H3 生成之前。　【v1.24.27 增补】新增 H3FMT-C15（台词行须带 <Subject N> 绑定与说话人 ID (Sx)）与 H3FMT-C16（说话人 ID 跨镜唯一稳定）：台词未绑定主体是『有台词镜全变鸟语』的直接成因。",
+    "h3_video_ref_binding_gate_ref": "H3 视频请求参考图绑定闸门：组合包内 gates/h3_video_ref_binding_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/h3_video_ref_binding_gate_闸门结果_v{version}.json。**补的是「提示词里写了 @分镜图 ≠ 请求体真垫了分镜图」这道盲区**（此前 H3 路线无机检覆盖）。逐镜核对三处一致性——① 提示词 ref_image_0~n 清单（07-分镜提示词/*_视频提示词_v1.md）；② stage6.5 公网素材URL索引（08-分镜公网URL/公网素材URL索引.json）；③ 实际请求体回写（13-工作流文档/API任务索引.json 的 video 记录）。机检六项：REFBIND-C1 分镜图必进且 URL 与 stage6.5 索引同源（**禁止取 stage6 API任务索引里的 PNG 母版地址**）；REFBIND-C2 所有 ref_image URL 一律 .webp（standards/asset_upload_format_policy.json 契约）；REFBIND-C3 数量 ≤ 档位上限（high_8=6 / standard_4=9）；REFBIND-C4 组成顺序 人物→道具→分镜图（末位）；REFBIND-C5 人物 ref 集合 == 该镜分镜卡『场景与人物』栏 CHxx 集合；REFBIND-C6 实际请求体 ref_image 字段值 == 提示词清单（防『写一套、发一套』）。任一 FAIL 即禁止提交该镜 H3。执行时机：stage7 提示词写入之后、发起 H3 生成之前（与 h3 格式闸门并列必跑）。　【v1.24.27 增补】新增 REFBIND-C7：英文画面描述必须与分镜卡逐镜对齐（卡里列的角色必须写到、未列的角色不得出现），专治描述表整体错位导致的『陌生人脸』『同一个人被复制成两个』。",
+    "video_prompt_ref_composition_gate_ref": "视频提示词参考图组成闸门：组合包内 gates/video_prompt_ref_composition_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/video_prompt_ref_composition_gate_闸门结果_v{version}.json。覆盖 video_engine 为**通用**（wan3.0 / grok / seedance2.0）与 **seedance2.5** 两条路线；H3 项目自动跳过（由 h3 格式闸门负责）。机检三项：VPRC-C1 通用路线多参必须为「人物（@CHxx）→ 道具（@PRPxx）→ 分镜图」，**不得出现场景资产图（@SCxx）**；VPRC-C2 seedance2.5 路线参考图必须全部为资产图（@CHxx / @SCxx / @PRPxx），**不得出现分镜图**（该路线不传分镜图、不设 first_frame）；VPRC-C3 资产引用编号不得重复。任一 FAIL 即该镜（或该组）提示词不合格，禁止提交。执行时机：stage7 提示词写入 07-分镜提示词 之后、发起视频生成之前。",
+    "download_atomicity_gate_ref": "下载原子性闸门：组合包内 gates/asset_download_atomicity_gate.py（项目内落地于 11-工作流脚本/workflow_gates/），输出 12-质检/asset_download_atomicity_gate_闸门结果_v{version}.json 与 _闸门汇总_v{version}.md。跨 stage5／stage6／stage7 校验『出图（出片）与下载必须在同一步内原子完成』：① 资产索引、分镜图URL索引、API任务索引中不得存在『已登记公网URL但磁盘无对应本地副本』的条目（URL 已取而未落盘 = 违约）；② 每个本地副本必须通过落地校验（文件存在、大小>10KB、文件头签名与格式一致、图像真实像素可解析／视频容器头可识别）；③ 本地副本缺失即判该素材不可自愈（URL 失效后无从重托管），P0 阻断。执行时机：stage5 资产生成完成后 / stage6 分镜图生成完成后 / stage7 视频下载完成后各执行一次；任何跨阶段接力（进 stage6.5、进 stage7、进成片交付）之前，本闸门必须为 PASS 状态。本闸门不替代各阶段专项闸门；两者结论冲突时以更严者为准。　（v1.24.14 追加）本闸门同时承担 **COS 上传图像格式契约**机检，新增四条 P0：DL-C8 每个图片素材 upload_format=webp 且转码字段齐全（transcode_source=lossless_master、transcode_passes=1）；DL-C9 转码输入必须是本地无损母版且母版仍在磁盘上（母版丢失＝二次压缩风险＋丧失重传能力）；DL-C10 画质分档正确（identity_anchor 保原生分辨率且 downscaled_to 为空；standard_reference 必须记录 downscaled_to）；DL-C11 upload_bytes 必须严格小于 master_bytes，降幅 <50% 记 WARNING（白底资产图 PNG 自身压缩率高，降幅天然偏小）。口径唯一真源：standards/asset_upload_format_policy.json。"
+  },
+  "skills_hint": [
+    "skills/video_prompt_router.md（先路由）",
+    "skills/video_prompt_h3.md | video_prompt_generic.md | video_prompt_seedance25.md（只读一套）"
+  ],
+  "api_hint": [
+    "api/video_api_h3.json | video_api_wan3_0.json | video_api_grok.json | video_api_seedance.json（只读当前引擎一个）"
+  ],
+  "size_bytes": 109685
+}

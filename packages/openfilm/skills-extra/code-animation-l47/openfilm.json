@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 188,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L47 科幻情景喜剧卡通",
+    "en": "L47 科幻情景喜剧卡通"
+  },
+  "summary": {
+    "zh-CN": "厌世天才开传送门只想买杯咖啡，却穿过越来越离谱的平行宇宙。",
+    "en": "厌世天才开传送门只想买杯咖啡，却穿过越来越离谱的平行宇宙。"
+  },
+  "details": {
+    "zh-CN": "适合：轻松搞笑\n分类：卡通与动画\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：轻松搞笑\n分类：卡通与动画\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

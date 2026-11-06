@@ -1,0 +1,43 @@
+---
+name: code-animation-x31
+description: X31 数学证明讲课：- 分类：X code-video · code-video
+---
+
+# X31 数学证明讲课
+
+- 分类：X code-video · code-video
+- 适合：一步步推出结论
+
+## 风格提示词
+
+# Style: math proof lecture
+
+A dark, quiet, textbook-like explainer that stages an argument the way a math lecture stages a proof: a title card, a numbered "lemma" per claim, and a closing "therefore" statement with a QED mark. Everything sits on a near-black panel with a faint off-center glow, rendered as flat 2D vector graphics — thin-stroke bar and scatter charts, color-coded equations that build term by term, and small dim citation text in the corner. The mood is restrained and confident rather than flashy: no camera movement, no particle effects, just clean typography and numbers arriving in a steady, metronomic rhythm under a soft ambient pulse.
+
+## Signature
+| Item | On screen |
+|---|---|
+| Background | Flat near-black navy (~#0a0b0f) with a faint, slightly off-center radial glow (lighter toward left-of-center, a touch darker in a band on the far right) — subtle, almost imperceptible, never a full gradient |
+| Palette | Off-white primary text (~#c7c7c9); gold/amber for the highlighted subject and positive reveals (~#fed74b, dot/marker ~#fed74b); cyan/sky-blue for the baseline/reference entity (marker ~#5ac4dc, glass fill ~#234755); sage green for positive deltas and "better" callouts (~#8ab679); dusty coral-red for cost or negative values (dashed line ~#ca6f74, glass fill ~#532623) |
+| Typography | A serif display face (Georgia/Playfair-like) for the big title and large numerals; a plain geometric sans (Latin+Hangul mixed) for labels, axis ticks, and body sentences, stepped down in brightness for lower-hierarchy text (title brightest, body mid-gray, footer citation almost invisible dim gray) |
+| Slide template | Consistent per-slide anatomy: small serif "series" title top-left, one line of colored subtitle directly under it acting as a step/lemma label (e.g. a numbered "Lemma N." tag in gold), main content centered in the middle of the frame, a single tiny source-citation line in dim gray pinned bottom-left |
+| Chart idiom | Thin-outline bar and line charts on faint gridlines: bars are outlined rectangles with a soft vertical glass-gradient fill in the series color, value labels floating just above each mark, brace-and-dashed-line annotations calling out the delta between two marks |
+| Equation staging | Numbers and operators are typeset like a worked proof and build left-to-right in color runs — neutral white/gray for given values, coral for the operation being applied, green for the computed result — with the final result getting a gold-outlined box as a "reveal" frame |
+| Diagram idiom | XY scatter / quadrant plots with arrow-tipped axes, one colored dot per entity, a directional arrow connecting old→new position, dashed guide lines dropping to each axis, and a faint tinted wash over the "better" quadrant with its own label |
+| Open/close marks | Opening title draws on as a hollow outline stroke that then fills solid (like a line being traced before it's colored in), preceded by a single thin drawn stroke/caret; closing slide is a plain "∴ therefore..." statement ending in a small QED box (∎), then the whole frame fades to black |
+
+## Direction
+Design a restrained, textbook-style explainer video: a near-black background (flat, almost no gradient, maybe a whisper of an off-center glow) that stays completely still — no camera movement, only elements fading, drawing on, or growing within a fixed frame. Structure the video like a worked proof: an opening title card whose text draws on as a hollow outline before filling solid, then a sequence of "lemma" slides, each with a small title top-left and a one-line colored subtitle acting as a step label, and a closing "therefore" statement ending in a small QED-style mark before fading to black. Use a disciplined accent-color system on top of off-white body text and dim-gray meta text: one warm color (gold/amber) for the subject being argued for, one cool color (cyan/blue) for the baseline or comparison point, green for positive deltas or "the better outcome," and a dusty red/coral for costs or negative values — apply these consistently across equations, bar charts, and scatter plots. Stage any math or comparison the way a proof is written: numbers and operators typeset in color-coded runs that build left-to-right, with the final result boxed in the highlight color. Prefer minimal, thin-outline data visuals over illustrations — bar charts with soft gradient fills and value labels, XY plots with arrow axes, dashed guide lines, and a directional arrow showing movement from an old value to a new one. Keep a tiny, low-contrast source-citation line pinned in a corner throughout. For sound, use a calm ambient pad with a bright, regular percussive pulse landing on a steady, almost metronomic interval (roughly every bar), occasional soft bass sweeps under transitions, and one clear loud swell near the end that resolves into a synchronized fade to silence and fade to black.
+
+---
+
+## 用这一种做片
+
+- 上面 `{{ }}` 里是要你填的内容；填掉它，保住形成这个风格的核心视觉特征（配色、运动节奏、构图逻辑）。
+- 画面是时间 t 的纯函数：同一个 t 每次画出来一样。随机数固定种子，不要用 `Math.random`，不要在帧之间累积状态。
+- 一般用原生 HTML + Canvas／SVG／CSS；需要复杂空间镜头时才引 Three.js。一个页面没有声音。
+- 用户给的数字、事实、品牌原样用，不编造；图表形状要跟数值对得上。
+- 成品留在项目里，文字、颜色、节奏都要能再改：常改的参数集中在一处。
+- 做完打开看首帧、中段、尾帧：字体、溢出、黑帧、字幕可读性。用户要 MP4 就真渲染，缺依赖就说清没导出。
+
+素材由哔哩哔哩 **俯仰观照** 整理分享，技能封装来自 [XiaoyeCodes/code-animation-prompts](https://github.com/XiaoyeCodes/code-animation-prompts)。免费使用、免费分享；不要把这个合集包装成收费课程或付费技能出售。

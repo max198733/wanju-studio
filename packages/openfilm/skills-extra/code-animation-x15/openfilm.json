@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 230,
+  "icon": "film",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "X15 热敏小票",
+    "en": "X15 热敏小票"
+  },
+  "summary": {
+    "zh-CN": "- 分类：X code-video · code-video",
+    "en": "- 分类：X code-video · code-video"
+  },
+  "details": {
+    "zh-CN": "适合：清单、\"算一笔账\"\n分类：code-video\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：清单、\"算一笔账\"\n分类：code-video\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

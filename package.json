@@ -1,0 +1,39 @@
+{
+  "name": "openfilm-monorepo",
+  "private": true,
+  "description": "OpenFilm: the open source AI video agent. The `openfilm` package (the format, the CLI and Studio), the desktop app, and what the clients share with the OpenFilm service.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "pnpm --filter openfilm dev",
+    "dev:desktop": "pnpm --filter @openfilm/desktop start",
+    "build": "pnpm --filter openfilm build:ui && pnpm --filter @openfilm/desktop build:shell",
+    "test": "pnpm -r --workspace-concurrency=1 --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "audit:public": "node scripts/audit-public.mjs",
+    "check:pack": "node scripts/check-pack.mjs",
+    "release:wanju": "node apps/desktop/scripts/release-wanju.mjs",
+    "test:release": "node --test apps/desktop/scripts/wanju-release-options.test.mjs apps/desktop/scripts/wanju-signing.test.mjs scripts/wanju-public-source.test.mjs",
+    "source:public": "node scripts/wanju-public-source.mjs",
+    "styles:build": "node tools/build-skills.mjs",
+    "skills:sync": "node scripts/sync-skills.mjs",
+    "changeset": "changeset",
+    "examples:sync": "node scripts/sync-examples.mjs"
+  },
+  "devDependencies": {
+    "@actions/artifact": "6.3.1",
+    "@changesets/changelog-github": "0.5.2",
+    "@changesets/cli": "2.31.1",
+    "pnpm": "9.15.9"
+  },
+  "pnpm": {
+    "overrides": {
+      "zod@>=4 <4.6.6": "^4.6.6",
+      "undici@>=8 <8.12.2": "^8.12.2"
+    }
+  }
+}

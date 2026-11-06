@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 199,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L58 低多边形等距",
+    "en": "L58 低多边形等距"
+  },
+  "summary": {
+    "zh-CN": "空海里一格格长出小岛和村庄，每放一块响一个音符，直到星空。",
+    "en": "空海里一格格长出小岛和村庄，每放一块响一个音符，直到星空。"
+  },
+  "details": {
+    "zh-CN": "适合：小岛、小世界\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：小岛、小世界\n分类：材质与 3D\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

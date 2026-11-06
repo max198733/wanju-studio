@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 177,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L36 蓝图 / 工程制图",
+    "en": "L36 蓝图 / 工程制图"
+  },
+  "summary": {
+    "zh-CN": "发明家的蓝图自己画出一台接云机器，修订云线变成了真的雨云。",
+    "en": "发明家的蓝图自己画出一台接云机器，修订云线变成了真的雨云。"
+  },
+  "details": {
+    "zh-CN": "适合：讲原理、讲结构\n分类：图形与排版\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：讲原理、讲结构\n分类：图形与排版\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

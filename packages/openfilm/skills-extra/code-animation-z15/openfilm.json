@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 129,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z15 温暖水彩科普卡",
+    "en": "Z15 温暖水彩科普卡"
+  },
+  "summary": {
+    "zh-CN": "柔和水彩晕染，友好易懂的造型，适合做科普卡片 / warm friendly watercolor educational card",
+    "en": "柔和水彩晕染，友好易懂的造型，适合做科普卡片 / warm friendly watercolor educational card"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

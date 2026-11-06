@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 128,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z14 彩铅手绘",
+    "en": "Z14 彩铅手绘"
+  },
+  "summary": {
+    "zh-CN": "彩铅排线，纸张纹理 / colored pencil on textured paper",
+    "en": "彩铅排线，纸张纹理 / colored pencil on textured paper"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

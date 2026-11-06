@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 155,
+  "icon": "presentation",
+  "cover": "cover.jpg",
+  "title": {
+    "zh-CN": "L14 爆炸图拆解",
+    "en": "L14 爆炸图拆解"
+  },
+  "summary": {
+    "zh-CN": "开源键盘的一半在一次环绕中逐层拆开，看到主控再合拢，标上真实尺寸。",
+    "en": "开源键盘的一半在一次环绕中逐层拆开，看到主控再合拢，标上真实尺寸。"
+  },
+  "details": {
+    "zh-CN": "适合：拆开看里面，比如 AI 由哪几部分组成\n分类：实证影像\n带来源参考静帧；不代表最终生成效果。",
+    "en": "适合：拆开看里面，比如 AI 由哪几部分组成\n分类：实证影像\n带来源参考静帧；不代表最终生成效果。"
+  }
+}

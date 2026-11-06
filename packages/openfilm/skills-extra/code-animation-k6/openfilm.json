@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 82,
+  "icon": "shapes",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "K6 清线漫画",
+    "en": "K6 清线漫画"
+  },
+  "summary": {
+    "zh-CN": "线条均匀，平涂，像《丁丁历险记》",
+    "en": "线条均匀，平涂，像《丁丁历险记》"
+  },
+  "details": {
+    "zh-CN": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：适合做\"我\"的\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

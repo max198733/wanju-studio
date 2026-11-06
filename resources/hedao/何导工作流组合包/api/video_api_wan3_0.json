@@ -1,0 +1,60 @@
+{
+  "api_id": "api_integration.video_api_wan3_0",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/wan_video_config.json",
+  "payload": {
+    "stage": 7,
+    "service": "通义万相 Wan3.0（AutoDL ali代理转发的阿里云视频合成接口）",
+    "provider": "阿里云百炼DashScope协议（经AutoDL ali通道转发）",
+    "base_url": "https://www.autodl.art",
+    "model": "wan3.0（模型名以平台实际返回为准）",
+    "endpoints": {
+      "create": "POST https://www.autodl.art/api/v1/ali/api/v1/services/aigc/video-generation/video-synthesis",
+      "query": "GET https://www.autodl.art/api/v1/ali/api/v1/tasks/{task_id}（DashScope异步任务查询同构路径，实际路径以平台文档/首次调用返回为准）",
+      "cancel": "不适用（以平台文档为准）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json",
+        "X-DashScope-Async": "enable"
+      },
+      "credential_source": "工作流目录config/wan_video_config.json的api_key字段或环境变量WAN_VIDEO_API_KEY",
+      "key_format": "DashScope风格API Key"
+    },
+    "create_request": {
+      "model": "wan3.0系列模型名",
+      "input.prompt": "stage7视频提示词（非H3引擎通用格式：分镜原文逐字保留+最上方[镜号]|持续时长|resolution行+多参@引用与URL标注，generic_engine_prompt_rule，不用 H3 官方结构（T2VA 三字段 / Ref2VA 六段））",
+      "input.img_url": "图生视频时传入该镜分镜图公网URL（stage6.5 verified）；纯文生视频时省略",
+      "parameters.size": "与运行配置project_resolution映射的画幅尺寸（wan3.0项目分辨率组为720p竖/1080p竖/720p横/1080p横，如720p横→1280*720，以平台枚举为准）",
+      "parameters.duration": "与H3同规则：该镜分镜持续时长*4/3余量，限制4-10秒，低于4秒按4秒保底"
+    },
+    "create_response": {
+      "task_id": "异步任务ID（DashScope output.task_id风格，以平台实际返回为准）"
+    },
+    "query_response": {
+      "status_values": "PENDING|RUNNING|SUCCEEDED|FAILED（DashScope风格大写，终态以SUCCEEDED为准，具体以平台实际返回为准）",
+      "video_url_field": "output.video_url（成功后取得视频下载地址，以平台实际返回为准）"
+    },
+    "async_rules": [
+      "创建任务后使用返回task_id查询，不重复创建同一任务。",
+      "建议每10秒查询一次，终态仅以SUCCEEDED或FAILED判断。",
+      "SUCCEEDED后必须下载视频本地副本到10-成片并登记视频URL到API任务索引，与video_return_policy同规则。",
+      "state=FAILED读取失败信息；单镜失败只返修该镜，不重做无关镜头。"
+    ],
+    "differences_from_h3": [
+      "参考图模式：wan3.0为单参考图（input.img_url=该镜分镜图）驱动，不使用H3的ref_image_0~n多参与ref_audio声线输入；人物一致性由分镜图保证。",
+      "音频：wan3.0不传ref_audio；旁白与台词由接口内置音色生成或留待后期配音，stage5声线MP3在该引擎下不进入请求体（资产保留，切回H3时继续可用）。",
+      "提示词分流：仅video_engine=H3使用h3-prompt-writing标准结构（T2VA/Ref2VA）；H3以外引擎一律用分镜原文+分辨率+多参的通用格式（generic_engine_prompt_rule），请求体字段按引擎映射。"
+    ],
+    "billing_and_limits": {
+      "note": "计费以AutoDL ali通道实际为准；时长与分辨率限制以平台文档为准"
+    },
+    "routing_note": "本接口仅在运行配置video_engine=wan3.0时被stage7使用；video_engine=H3或grok时完全不读取本节，H3的video_api规则与grok的video_api_grok规则各自原样生效，互不覆盖。"
+  }
+}

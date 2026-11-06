@@ -1,0 +1,54 @@
+name: wanju-students
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4890"
+      WANJU_SERVICE_DB: /data/wallet.sqlite
+      WANJU_CLOUD_DIR: /data/cloud
+      WANJU_ADMIN_SECRET: ${WANJU_ADMIN_SECRET:?Set WANJU_ADMIN_SECRET in the private .env file}
+      WANJU_PROXY_TOKEN: ${WANJU_PROXY_TOKEN:?Set the private WANJU_PROXY_TOKEN in the .env file}
+    volumes:
+      - student-data:/data
+    ports:
+      - "127.0.0.1:4890:4890"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4890/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      WANJU_DOMAIN: ${WANJU_DOMAIN:?Set WANJU_DOMAIN to your real public domain}
+      WANJU_PROXY_TOKEN: ${WANJU_PROXY_TOKEN:?Set the private WANJU_PROXY_TOKEN in the .env file}
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./downloads:/srv/releases:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  student-data:
+  caddy-data:
+  caddy-config:

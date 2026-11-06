@@ -1,0 +1,93 @@
+{
+  "api_id": "api_integration.music_api",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/mxapi_music_config.json",
+  "payload": {
+    "stage": "不限阶段（登记态：按需调用，尚未挂进任何阶段 process）",
+    "service": "苏诺音乐（主通道：官方 Agent 技能 suno-cn-music @ mcp.suno.cn；备选登记态：MXAPI open.mxapi.org 的 Suno V2 接口）",
+    "provider": "苏诺（Suno.cn）官方技能通道 / MXAPI 聚合转发（备选）",
+    "base_url": "https://open.mxapi.org",
+    "model_selection": {
+      "source": "调用方按需指定 mv 字段；本接口不参与运行配置的引擎路由",
+      "map": {
+        "V6": "chirp-hawk（默认档）",
+        "V6-wild": "chirp-hawk-wild（更发散）",
+        "V6-mini": "chirp-goose（更轻量）"
+      },
+      "rule": "mv 只允许写 chirp-hawk / chirp-hawk-wild / chirp-goose 三者之一；不传时平台自动定向到 V6。禁止写 V4/V5 之类的旧档名字段。"
+    },
+    "endpoints": {
+      "create": "POST https://open.mxapi.org/api/v2/music/generate（接口文档已确认）",
+      "query": "待实测确认（接口文档页未暴露查询端点；首次使用前必须按 live_test_rule 实测确认，若实际返回结构不符则以实测结果为准并回写本节）",
+      "download": "待实测确认（站点接口列表含 下载 WAV / 下载 MP3 / 下载 M4A 三个下载端点，路径均未在文档页暴露）",
+      "sound_effect": "待实测确认（站点另有『生成音效』端点）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json"
+      },
+      "credential_source": "工作流目录config/mxapi_music_config.json的api_key字段或环境变量MXAPI_MUSIC_API_KEY",
+      "key_format": "MXAPI 控制台密钥字符串"
+    },
+    "create_request": {
+      "mode_rule": "二选一，不可同时为空：①灵感模式只填 gpt_description_prompt；②自定义模式填 prompt（歌词）+ tags（风格）+ title（歌名）。",
+      "gpt_description_prompt": "【灵感模式】音乐描述，如\"一首欢快的流行歌\"。与 prompt 二选一。",
+      "prompt": "【自定义模式】歌词内容。V4限3000字，V5限5000字。",
+      "tags": "【自定义模式】音乐风格（如 pop, rock）。V4限200字，V5限1000字。",
+      "negative_tags": "排除的风格提示词",
+      "mv": "模型版本：chirp-hawk（V6）/ chirp-hawk-wild（V6-wild）/ chirp-goose（V6-mini）",
+      "title": "歌名。V4限80字，V5限100字。",
+      "make_instrumental": "是否纯音乐（无歌词）；做纯 BGM 时置 true。",
+      "task": "操作类型：不传=默认生成；可选 extend（延长）/ upload_extend（上传延长）/ cover（翻唱）",
+      "continue_clip_id": "【extend】被延长的歌曲ID",
+      "continue_at": "【extend】从第几秒开始延长",
+      "cover_clip_id": "【cover】原歌曲ID",
+      "metadata": "高级参数（vocal_gender、control_sliders.style_weight、control_sliders.weirdness_constraint 等）"
+    },
+    "create_response": {
+      "shape": "{\"code\":200,\"message\":\"success\",\"data\":{\"task_ids\":[\"...\",\"...\"]}}",
+      "task_id_field": "data.task_ids（数组；一次生成两首歌，故返回 2 个 task_id，须按 task_id 分别轮询取回）"
+    },
+    "query_response": {
+      "status_values": "待实测确认（不确定字段名时先按 code/status/state 兼容读取，命中即用并回写本节）",
+      "audio_url_field": "待实测确认（优先尝试 data[].audio_url / data[].url / data[].stream_audio_url）",
+      "lyrics_timestamp_field": "待实测确认（站点另有『获取歌词时间戳』端点）"
+    },
+    "download_ttl_rule": "接口站原文提醒：Suno 官方下载链接**仅 1 小时有效**，须及时转存。取得音频 URL 后必须在同一步内落盘并做落地校验（存在且>10KB + 文件头签名 + 可解码），与 api_integration.policies 及 asset_download_atomicity_gate 同口径；禁止把 URL 留到后续阶段再取。",
+    "async_rules": [
+      "创建任务后使用返回的 task_ids 逐个查询，不重复创建同一任务。",
+      "轮询间隔与终态判定以实测确认的完成/失败状态字段为准。",
+      "成功取得音频URL后必须立即下载本地副本到项目目录并登记到 13-工作流文档/API任务索引.json，与 video_return_policy 同规则。",
+      "失败时读取失败信息；单首失败只重做该首，不整批重跑。"
+    ],
+    "live_test_rule": "首次接入必须先做端到端 live test（口径同 api_integration.policies 的 new_engine_live_test_policy：create 建任务 → 轮询 query 取状态 → 取得音频URL → 下载本地副本），确认查询端点、状态字段、音频URL字段与鉴权头格式；实测结论回写本节 endpoints/query_response 与 config/mxapi_music_config.json；未通过前禁止批量调用。",
+    "billing_and_limits": {
+      "reference_price": "以 MXAPI 控制台与站点最新文档为准（本次未实测）",
+      "duration_limit": "单次生成两首；延长/翻唱以平台文档为准",
+      "note": "密钥泄露风险高，禁止写入提示词、自检结果、公开日志与交付文件"
+    },
+    "routing_note": "本接口为**登记态**：仅在某个阶段显式引用它时才按其文件加载；目前没有任何阶段 process 引用它，因此本接口的接入**不改变** image_api / video_api_h3 / video_api_wan3_0 / video_api_grok / video_api_seedance 的既有路由，也不影响任何引擎的运行配置选择。若后续要在链路中真正调用音乐生成，需由导演指定挂载阶段与其口径。",
+    "runtime_channel": {
+      "primary": "苏诺官方 Agent 技能 suno-cn-music（包源 https://mcp.suno.cn/mcp/skill/download）",
+      "install_location": "C:\\Users\\Administrator\\.workbuddy\\skills\\suno-cn-music\\",
+      "invocation": "在该技能根目录执行 node scripts/suno-client.mjs <command>；生成用 request POST /mcp/api/generate，查询用 request GET \"/mcp/api/task/<serial_no[,serial_no]>?wait=60\"。",
+      "hard_rules": [
+        "所有网络请求只能经 scripts/suno-client.mjs 发起；禁止用 curl、浏览器脚本、自拼 HTTP 请求或 MCP JSON-RPC 替代。",
+        "不需要 API Key，采用网页授权制；用户口头说「已登录」不算数，只认服务端返回 authorized。",
+        "authorized 判定与授权链接回传规则以该技能 SKILL.md 为准；授权链接须原样交付，不得脱敏/截断/重组/写日志。",
+        "收费任务（生成/处理）不得静默重试；insufficient_credits 时原样给出 action.url，等导演明确确认后才可 purchase retry。",
+        "duration 字段只对「非纯音乐的自定义模式」开放；生成纯音乐时禁止传 duration，时长由模型决定。",
+        "纯器乐想控时长只能靠 prompt 语义引导（实测：同一参数下提示词含「短/循环」语义会显著缩短产出时长）。",
+        "play_url 有时效，取得后必须立即下载本地副本并做落地校验（同 asset_download_atomicity_gate 口径）。"
+      ],
+      "local_path_pitfall": "本机 Git Bash 会把 /mcp/api/... 当 POSIX 路径改写成 Windows 路径，导致报 invalid_path（本地拦截、未提交、不扣积分）。必须加 MSYS_NO_PATHCONV=1 与 MSYS2_ARG_CONV_EXCL=\"*\"。",
+      "channel_priority": "本技能通道为现行主通道；下方的 MXAPI（open.mxapi.org）条目降为备选登记态，未经导演点名不得调用。"
+    }
+  }
+}

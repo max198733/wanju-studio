@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 138,
+  "icon": "layers",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "H9 Coral",
+    "en": "H9 Coral"
+  },
+  "summary": {
+    "zh-CN": "全大写 Bebas Neue 标题，奶油底珊瑚色",
+    "en": "全大写 Bebas Neue 标题，奶油底珊瑚色"
+  },
+  "details": {
+    "zh-CN": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：现成版式\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

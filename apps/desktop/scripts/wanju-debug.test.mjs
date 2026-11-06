@@ -1,0 +1,71 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { copyDebugProject, debugBuildNeeded, prepareDebugWorkspace } from './wanju-debug.mjs';
+
+test('fresh debug settings do not inherit chat keys, projects, sessions or an account', () => {
+  const folder = mkdtempSync(join(tmpdir(), 'wanju-debug-'));
+  const sourceData = join(folder, 'release');
+  const fallbackConfig = join(folder, 'fallback');
+  mkdirSync(join(sourceData, 'providers'), { recursive: true });
+  mkdirSync(fallbackConfig);
+  writeFileSync(join(sourceData, 'agents.json'), '{"shown":{}}');
+  writeFileSync(join(sourceData, 'byok-keys'), 'sealed-test-only');
+  writeFileSync(join(sourceData, 'wanju-run.json'), 'not-a-debug-session');
+  writeFileSync(join(sourceData, 'window.json'), 'not-debug-tabs');
+  writeFileSync(join(sourceData, 'providers/seedance_video_config.json'), '{"api_key":"mock-only"}');
+  writeFileSync(join(fallbackConfig, 'mxapi_music_config.json'), '{}');
+  writeFileSync(join(fallbackConfig, 'unrelated-secret.json'), '{}');
+  const workspace = prepareDebugWorkspace({ root: join(folder, 'debug'), sourceData, fallbackConfig });
+  assert.deepEqual(readdirSync(workspace.data).sort(), ['providers']);
+  assert.deepEqual(readdirSync(workspace.providers).sort(), ['mxapi_music_config.json', 'seedance_video_config.json']);
+  assert.deepEqual(readdirSync(join(workspace.workspace, 'Projects')), []);
+  writeFileSync(join(workspace.providers, 'seedance_video_config.json'), '{"api_key":"debug-choice"}');
+  prepareDebugWorkspace({ root: workspace.workspace, sourceData, fallbackConfig });
+  assert.equal(JSON.parse(readFileSync(join(workspace.providers, 'seedance_video_config.json'))).api_key, 'debug-choice');
+  assert.equal(JSON.parse(readFileSync(join(sourceData, 'providers/seedance_video_config.json'))).api_key, 'mock-only');
+  writeFileSync(join(workspace.data, 'agents.json'), '{"debugOnly":true}');
+  writeFileSync(join(workspace.data, 'byok-keys'), 'existing-debug-choice');
+  prepareDebugWorkspace({ root: workspace.workspace, sourceData, fallbackConfig });
+  assert.equal(JSON.parse(readFileSync(join(workspace.data, 'agents.json'))).debugOnly, true);
+  assert.equal(readFileSync(join(workspace.data, 'byok-keys'), 'utf8'), 'existing-debug-choice');
+});
+
+test('debug UI rebuilds only when its inputs changed or output is missing', () => {
+  const folder = mkdtempSync(join(tmpdir(), 'wanju-debug-build-'));
+  const output = join(folder, 'apps/desktop/shell/dist');
+  const source = join(folder, 'apps/desktop/chat');
+  mkdirSync(output, { recursive: true });
+  mkdirSync(source, { recursive: true });
+  writeFileSync(join(output, 'index.html'), '<html></html>');
+  const stamp = join(folder, 'build.json');
+  assert.equal(debugBuildNeeded(folder, stamp).needed, true);
+  writeFileSync(stamp, JSON.stringify({ modified: debugBuildNeeded(folder, stamp).modified }));
+  assert.equal(debugBuildNeeded(folder, stamp).needed, false);
+  writeFileSync(join(source, 'new.tsx'), 'export {};');
+  assert.equal(debugBuildNeeded(folder, stamp).needed, true);
+});
+
+test('project copies preserve real work and receive a new identity without old billable tasks or sessions', () => {
+  const folder = mkdtempSync(join(tmpdir(), 'wanju-debug-copy-'));
+  const original = join(folder, 'Original');
+  const library = join(folder, 'Debug');
+  mkdirSync(join(original, '.film/logs'), { recursive: true });
+  mkdirSync(join(original, 'assets'));
+  writeFileSync(join(original, 'film.html'), '<html>real cut</html>');
+  writeFileSync(join(original, 'wanju.json'), '{"shots":[]}');
+  writeFileSync(join(original, 'assets/reference.png'), 'real-test-media');
+  writeFileSync(join(original, '.film/id'), 'original-id');
+  writeFileSync(join(original, '.film/wanju-tasks.json'), '[{"id":"do-not-resume"}]');
+  writeFileSync(join(original, '.film/logs/private.txt'), 'do-not-copy');
+  writeFileSync(join(original, '.film/wanju-assets.json'), '{"version":1}');
+  const target = copyDebugProject(original, library);
+  assert.equal(readFileSync(join(target, 'film.html'), 'utf8'), '<html>real cut</html>');
+  assert.equal(readFileSync(join(target, 'assets/reference.png'), 'utf8'), 'real-test-media');
+  assert.deepEqual(readdirSync(join(target, '.film')), ['wanju-assets.json']);
+  assert.equal(readFileSync(join(original, '.film/id'), 'utf8'), 'original-id');
+  assert.notEqual(copyDebugProject(original, library), target);
+  assert.throws(() => copyDebugProject(original, join(original, 'nested')), /outside/);
+});

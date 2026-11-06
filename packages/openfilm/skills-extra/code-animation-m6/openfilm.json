@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 42,
+  "icon": "monitor",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "M6 苹果发布会风",
+    "en": "M6 苹果发布会风"
+  },
+  "summary": {
+    "zh-CN": "柔和、白、亮蓝、玻璃质感，镜头从不停在静止画面上切。",
+    "en": "柔和、白、亮蓝、玻璃质感，镜头从不停在静止画面上切。"
+  },
+  "details": {
+    "zh-CN": "适合：展示工具、展示界面的段落。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：展示工具、展示界面的段落。\n分类：节奏和快剪类\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

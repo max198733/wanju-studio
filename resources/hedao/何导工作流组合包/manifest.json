@@ -1,0 +1,469 @@
+{
+  "pack_name": "何导工作流组合包",
+  "pack_version": "2.1.1",
+  "identity": {
+    "skill_name": "电影AI一体化阶段工作流技能",
+    "skill_version": "v1.24.33",
+    "skill_description": "将用户想法或大纲按十个固定阶段制作成AI漫剧视频。每阶段只调用本JSON内指定技能及当前项目文件夹中的资料、配置、资产和脚本；每阶段完成后必须生成机器可读JSON与人工可读Markdown自检结果，自检未通过不得按正常路径进入下一阶段。",
+    "language": "zh-CN",
+    "note": "原骨架顶层标识，供把本包当 skill 挂载时使用。"
+  },
+  "source_workflow_version": "v1.24.33",
+  "generated_at": "2026-10-20T17:30:18+08:00",
+  "structure": "core(红线+支撑+契约) + 7 份环节骨架",
+  "version_lock_rule": "任一环节开工前：读 manifest.pack_version + core_sha256 + skeletons.<ID>.sha256，与项目 13-工作流文档/阶段状态.json 记录比对；不一致则暂停并提示确认。改规则后必须重跑 _tools/split_pack.py 并递增 pack_version。",
+  "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC",
+  "support_sha256": "7C6EC53D0B36E898D4C29A1B32C4AD22D29D5444C842EF7FA8F882702433E1BE",
+  "aggregate_sha256": "7EB0542DE1523CE15758D1438C49E075B989F6BC7E8ED7ADE09E5D129F7D5D5B",
+  "file_count": 72,
+  "skeletons": {
+    "S1": {
+      "name": "立项与运行配置",
+      "file": "stages/S1-立项与运行配置.json",
+      "stage_numbers": [
+        1,
+        2
+      ],
+      "bytes": 47681,
+      "sha256": "FEA373A15AAF6B99C8C025FD1328C997022A3D27EBAE268A479C3FB51F156ECE",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S2": {
+      "name": "剧本",
+      "file": "stages/S2-剧本.json",
+      "stage_numbers": [
+        3
+      ],
+      "bytes": 6999,
+      "sha256": "E77484E2A60D506F2533BE50748F88692BF0636B81AD1913AE48E228412E8437",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S3": {
+      "name": "分镜拆解",
+      "file": "stages/S3-分镜拆解.json",
+      "stage_numbers": [
+        4
+      ],
+      "bytes": 120713,
+      "sha256": "B2ADEDC55592ECAB7E9396BA3708509728F6F03BC51DDDF118A9F5C570AE8562",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S4": {
+      "name": "资产与声音",
+      "file": "stages/S4-资产与声音.json",
+      "stage_numbers": [
+        5
+      ],
+      "bytes": 36141,
+      "sha256": "A077EC2B56D0D445F91293C9C3F5CB1F640ABF265273656BEA5331A736E3CCB0",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S5": {
+      "name": "分镜图",
+      "file": "stages/S5-分镜图.json",
+      "stage_numbers": [
+        6
+      ],
+      "bytes": 50025,
+      "sha256": "B3F63A964A449AF2C13FF990D1876D108B941E734C9C0F01E141C8710D98848D",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S6": {
+      "name": "图册与COS上传",
+      "file": "stages/S6-图册与COS上传.json",
+      "stage_numbers": [
+        6.5,
+        6.6
+      ],
+      "bytes": 36247,
+      "sha256": "95B362887090B83349897E87C3FC57306F2338497FCBBC8A8FC9E1E334BF17A3",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    },
+    "S7": {
+      "name": "出视频",
+      "file": "stages/S7-出视频.json",
+      "stage_numbers": [
+        7
+      ],
+      "bytes": 109710,
+      "sha256": "4907BCE454FA91A6DFD40C8A43F9154F97B8AAB8AF559E8942F679FB6A74C919",
+      "core_sha256": "E79EAE09482C9685B03B8F8BBA8E45E455CBBE33DD537B434766DAFDD82CEDFC"
+    }
+  },
+  "source_snapshot": {
+    "path": "_source/workflow-v1.5.36-source.json",
+    "bytes": 415596,
+    "sha256": "CDD392DB2B97AE5F1F318E84D780F796D80B8462DF4EF51AE91B36AFCCCC0519",
+    "note": "v1.5.36 单体骨架原样留存，仅供回溯。执行时禁止读取；改规则请改 core/00-core.json 后重跑拆分器。"
+  },
+  "deprecated_gates": [
+    "stage_8_interaction_gate.py"
+  ],
+  "deprecated_gates_note": "stage8 返工环节已砍，该闸门不属于任何环节，不要调用。",
+  "excluded_from_manifest": [
+    "_tools/",
+    "_source/"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 6983,
+      "sha256": "43912032DEE2B9B4F26D038D6400B41EEC46D63E55ECA90765E11FE5BBB86F55"
+    },
+    {
+      "path": "api/cos_imgbed_api.json",
+      "bytes": 10319,
+      "sha256": "133E191878B7312AEFA0042DB37AE57D8A6C40A03368F0E923ED19A08737536F"
+    },
+    {
+      "path": "api/image_api.json",
+      "bytes": 15525,
+      "sha256": "223C6FC94D5D57F595514AF8A2F99695347E44FA65184D2513409D72B2D0AF97"
+    },
+    {
+      "path": "api/music_api.json",
+      "bytes": 7796,
+      "sha256": "790BC2C88E37494671F28230476C5028394BDF4168F387DD56A0A30092A3A028"
+    },
+    {
+      "path": "api/policies.json",
+      "bytes": 4353,
+      "sha256": "3D928C6A9565E1CFD967048C56DA716C922D168814E6D4826936F6DB13816CA7"
+    },
+    {
+      "path": "api/video_api_grok.json",
+      "bytes": 6337,
+      "sha256": "90B01C8F1145875D085CA240F00D76DC792DA77DD42464EFE812D5E282FC04DC"
+    },
+    {
+      "path": "api/video_api_h3.json",
+      "bytes": 12705,
+      "sha256": "BA5533F4A9D1E17972BD1B99376B9ACAF1DBFEC474C47543638ECC2A3F7799EB"
+    },
+    {
+      "path": "api/video_api_seedance.json",
+      "bytes": 11561,
+      "sha256": "4207095AAE3E0E376E66515C97F715F58B3F161AAEF2A629E805C341B0C7422F"
+    },
+    {
+      "path": "api/video_api_wan3_0.json",
+      "bytes": 3917,
+      "sha256": "7C5B1EDF65743FAEAEF22EC86BCDF5CFC3C4CE575C74F2E2B048E9141FBD74E0"
+    },
+    {
+      "path": "core/00-core.json",
+      "bytes": 26021,
+      "sha256": "990D0177B5E9DE420B208010FC469362C8C6BDFA1EC1DFD5BB80E5FB9F3656B5"
+    },
+    {
+      "path": "core/01-support.json",
+      "bytes": 43291,
+      "sha256": "59D5AD28B9720238F0B39C8B5F487D9C7F963474D4D9EB1E36FF840B3F1CDFD9"
+    },
+    {
+      "path": "core/02-contracts.json",
+      "bytes": 5915,
+      "sha256": "F19EF6FAC0DA77388F8B545D71208D15C042FE88431F650B68274DAC1F5CC2C0"
+    },
+    {
+      "path": "docs/README-v1.5.36-legacy.md",
+      "bytes": 86024,
+      "sha256": "3B7692A8F30468A8EADE6ECC4797B7E96C11E609845FDF3488645CF956C650F2"
+    },
+    {
+      "path": "docs/changelog.json",
+      "bytes": 18886,
+      "sha256": "7427361A45C99ACEF09F5FEF30480CBCDC52FA503116D15152979F27B92CA356"
+    },
+    {
+      "path": "gates/asset_download_atomicity_gate.py",
+      "bytes": 29710,
+      "sha256": "E2C6AE992F5F16E8B49EA9E7D36BB2CE3643CC3F863B3A5EFEE2B5392D86DAAD"
+    },
+    {
+      "path": "gates/h3_video_prompt_format_gate.py",
+      "bytes": 34709,
+      "sha256": "85BCFD260C3F86854821DE8312DBD160CA5F66A9971C318088976499EE04F3B5"
+    },
+    {
+      "path": "gates/h3_video_ref_binding_gate.py",
+      "bytes": 10358,
+      "sha256": "09271E51C3B1DAA160E8ABF50A62FD5A04A5105DA0938A96EDEF8364D3F21F82"
+    },
+    {
+      "path": "gates/one_shot_generation_gate.py",
+      "bytes": 9844,
+      "sha256": "57EE1217EE8D2C469BE01D3C9A931AF50F1079A1259B238BA1BAE62146412D11"
+    },
+    {
+      "path": "gates/pipeline_scene_face_consistency_gate.py",
+      "bytes": 25049,
+      "sha256": "CDE0BEE274CE521B4A90876E28B8C45089D3DF4D828C3F00CC6C2F9D837E694F"
+    },
+    {
+      "path": "gates/stage_4_storyboard_generation_gate.py",
+      "bytes": 129555,
+      "sha256": "ECC66FC729C5828D2635033BC8BDBA8F7D658414AF0E09E0DB9917DC051E9F30"
+    },
+    {
+      "path": "gates/stage_5_asset_generation_gate.py",
+      "bytes": 42872,
+      "sha256": "93CA58B1CA35B347A90EBB8A14642E6ED62F09B1BBF38D7F076948F8AA31E02E"
+    },
+    {
+      "path": "gates/stage_6_image_binding_gate.py",
+      "bytes": 28527,
+      "sha256": "08EFD0564100F8FB28485922F11755130247E617127F0BF02ABBCBB645BE99B5"
+    },
+    {
+      "path": "gates/stage_8_interaction_gate.py",
+      "bytes": 21625,
+      "sha256": "402C7D3CB6937672F230C01D3023CC032B0F959A00AE1622D3BB02BF64D2A7E9"
+    },
+    {
+      "path": "gates/storyboard_cast_frame_consistency_gate.py",
+      "bytes": 18775,
+      "sha256": "D2899D2DA5D460E7A8C9CA9B6E5710A09569585F13796F2B87F518998B8E182E"
+    },
+    {
+      "path": "gates/video_prompt_ref_composition_gate.py",
+      "bytes": 6492,
+      "sha256": "072DBDCCFA1C624C770E2B6E366FD693B55278C58F4EDEC3FD602B4CC701040E"
+    },
+    {
+      "path": "index.json",
+      "bytes": 7693,
+      "sha256": "23BA9A7E8D55FC757BE14A40815ED7931A18C1D2A7F40D5F311BD7DF0E0BAE20"
+    },
+    {
+      "path": "skills/detail_hook_emotion_map.md",
+      "bytes": 11021,
+      "sha256": "A63704F1CE2E69670CD1A1030F5D1C39A3E676EBEF615E89BA20C821CB2A2A9A"
+    },
+    {
+      "path": "skills/image_prompt_skill.md",
+      "bytes": 42090,
+      "sha256": "9AAFAF7C3B3A28D79CCF115AB9198B1322E79A88A5848320C21B713DA16C6B3B"
+    },
+    {
+      "path": "skills/script_skill.md",
+      "bytes": 6553,
+      "sha256": "727399A8CA39F4316B2D454EF6009E77CAD2FB9CA2B61654CB05F5741C0725B9"
+    },
+    {
+      "path": "skills/storyboard_general.md",
+      "bytes": 49163,
+      "sha256": "00DA0D43D7F946A1B39FB981097330CC6357DA0CD34564C093D929258D2E5DD8"
+    },
+    {
+      "path": "skills/storyboard_h3.md",
+      "bytes": 71289,
+      "sha256": "21719213311F1A47B3075DE7B48AAB5A60906AEFCE8F26968C7A1DC053335F65"
+    },
+    {
+      "path": "skills/storyboard_router.md",
+      "bytes": 10660,
+      "sha256": "EC29E7BA2FCF3218880425D10F9EA28E713146FE38A838B9A671F949E61243F1"
+    },
+    {
+      "path": "skills/storyboard_seedance25.md",
+      "bytes": 58799,
+      "sha256": "15D255FE3D3E5035B2FEE3D5E74AD33280762168A83895BCF60EC47B9ED5B463"
+    },
+    {
+      "path": "skills/video_prompt_generic.md",
+      "bytes": 13565,
+      "sha256": "6A7B649E878CD7FEDB2D015C860F5D52227DB50734AAFE2B30E38576D9B5314C"
+    },
+    {
+      "path": "skills/video_prompt_h3.md",
+      "bytes": 63759,
+      "sha256": "60592CA00ABD21851ADAA673A527F9B71E3BD81E4FD84786DCF78A420C6D56EA"
+    },
+    {
+      "path": "skills/video_prompt_router.md",
+      "bytes": 8865,
+      "sha256": "85AD31E0900D9C6FDDEC2DE0359BEBCDF7A8488B5510168A378010F33C955801"
+    },
+    {
+      "path": "skills/video_prompt_seedance25.md",
+      "bytes": 16520,
+      "sha256": "F9F20839CCC357587D9015308F01838F37C25A21BA78654F90A3966607807E4C"
+    },
+    {
+      "path": "stages/S1-立项与运行配置.json",
+      "bytes": 47681,
+      "sha256": "FEA373A15AAF6B99C8C025FD1328C997022A3D27EBAE268A479C3FB51F156ECE"
+    },
+    {
+      "path": "stages/S2-剧本.json",
+      "bytes": 6999,
+      "sha256": "E77484E2A60D506F2533BE50748F88692BF0636B81AD1913AE48E228412E8437"
+    },
+    {
+      "path": "stages/S3-分镜拆解.json",
+      "bytes": 120713,
+      "sha256": "B2ADEDC55592ECAB7E9396BA3708509728F6F03BC51DDDF118A9F5C570AE8562"
+    },
+    {
+      "path": "stages/S4-资产与声音.json",
+      "bytes": 36141,
+      "sha256": "A077EC2B56D0D445F91293C9C3F5CB1F640ABF265273656BEA5331A736E3CCB0"
+    },
+    {
+      "path": "stages/S5-分镜图.json",
+      "bytes": 50025,
+      "sha256": "B3F63A964A449AF2C13FF990D1876D108B941E734C9C0F01E141C8710D98848D"
+    },
+    {
+      "path": "stages/S6-图册与COS上传.json",
+      "bytes": 36247,
+      "sha256": "95B362887090B83349897E87C3FC57306F2338497FCBBC8A8FC9E1E334BF17A3"
+    },
+    {
+      "path": "stages/S7-出视频.json",
+      "bytes": 109710,
+      "sha256": "4907BCE454FA91A6DFD40C8A43F9154F97B8AAB8AF559E8942F679FB6A74C919"
+    },
+    {
+      "path": "standards/asset_upload_format_policy.json",
+      "bytes": 5054,
+      "sha256": "C1F7778BC889C80014B4D1C1FB782DFC6F0D11353E4E75287BF6613B0B40030A"
+    },
+    {
+      "path": "standards/camera_movement_system.json",
+      "bytes": 6779,
+      "sha256": "2719E7D81EE0042E2C141B82391E2ACA168AC2A89B275E6DBD96CFD21B416E1F"
+    },
+    {
+      "path": "standards/camera_position_system.json",
+      "bytes": 4142,
+      "sha256": "EB6D838516E5949AF0E5456BF05C84E882D56BD32B9C30DF2830379DEDBA3E5D"
+    },
+    {
+      "path": "standards/character_facing_policy.json",
+      "bytes": 4055,
+      "sha256": "FE0146C70CB1B3B1572B3167326E9F417511C4B239F32A32EE42CBF698143B4E"
+    },
+    {
+      "path": "standards/character_sub_form_policy.json",
+      "bytes": 7856,
+      "sha256": "C76FF33DE766D1B16AE4738E781AD9404C05E784CBA99F3B9653F00F6F70B096"
+    },
+    {
+      "path": "standards/continuity_policy.json",
+      "bytes": 5522,
+      "sha256": "907AAC7568E3ABF33137EFFCA45DE8CCFDBB41D5A795BD338516A9E9A4F9274A"
+    },
+    {
+      "path": "standards/creation_taboo_rules.json",
+      "bytes": 12234,
+      "sha256": "7606D91FF4CFF4146189626390CFA6E5BEE749DA84CA7CF15C3560044D17E878"
+    },
+    {
+      "path": "standards/crowd_scene_focus_rule.json",
+      "bytes": 3013,
+      "sha256": "809DE5FCF4DDC5A3FC62581451533546707ECFAEEE0B9D7FEC7A77A7FBD35260"
+    },
+    {
+      "path": "standards/edit_verification_policy.json",
+      "bytes": 617,
+      "sha256": "4BAC7E813ED81CF92F2B07C60763983D68FBAEC387686BA43025028193EBC2C4"
+    },
+    {
+      "path": "standards/eye_line_and_gaze_policy.json",
+      "bytes": 4192,
+      "sha256": "4D839757FBF397CAA3EFA6CC5D9A03A0A2BF3255CB1BA11CBA4A46B2FC8AFBCF"
+    },
+    {
+      "path": "standards/frame_description_detail_policy.json",
+      "bytes": 12429,
+      "sha256": "EB581693208B09B3C6F51067BE87747A8960865463B10A08BA7B626CC8DF4750"
+    },
+    {
+      "path": "standards/full_pass_review_policy.json",
+      "bytes": 4120,
+      "sha256": "3647AE0D1FD44E9055A96CF15DACAD51FCFAE232BC566AB76ECE50DBEBE7B1C9"
+    },
+    {
+      "path": "standards/group_gap_detail_shot_policy.json",
+      "bytes": 9017,
+      "sha256": "F687AF4714042FD15F66AC798F732CFEDC41135CDEC64970F369B83B0C8D6075"
+    },
+    {
+      "path": "standards/group_story_arc_policy.json",
+      "bytes": 5685,
+      "sha256": "0665E27632019238EE442D01AC2D4CA8B76433A563EA88F243ABC88BF36F250F"
+    },
+    {
+      "path": "standards/micro_expression_module.json",
+      "bytes": 8339,
+      "sha256": "D302197E86EC7EEF5F7ED6B016C1C6DD5446C111F9DD194ACF2C76793DFCBE40"
+    },
+    {
+      "path": "standards/one_shot_generation_policy.json",
+      "bytes": 4954,
+      "sha256": "489C750F78178CE99F46DAF3B2DFB3A09FF444AC9079A89A7BB70D64F975AB51"
+    },
+    {
+      "path": "standards/scene_blocking_policy.json",
+      "bytes": 8661,
+      "sha256": "9431895A2F45071EBAE4AA1CB4772ED7370A28DCD109479FFFD8D4EFD03EF9AC"
+    },
+    {
+      "path": "standards/scene_character_roster_policy.json",
+      "bytes": 8152,
+      "sha256": "8586D62E62C11B29FD013706536174D8AF8BE5833366F0DD7E4E412B68876157"
+    },
+    {
+      "path": "standards/shot_group_definition.json",
+      "bytes": 4116,
+      "sha256": "B5DF29A26A152F79CD5A2AF14A4CB6BC27E8D97E57A87A7ADCFADE11BCCB3D7C"
+    },
+    {
+      "path": "standards/shot_group_types.json",
+      "bytes": 10230,
+      "sha256": "B1184DAC70F8366AF1A70F01C2D7FA75D87A22B8FBAAC3EEB4AD70E3B986BA65"
+    },
+    {
+      "path": "standards/shot_reverse_shot_scene_face_policy.json",
+      "bytes": 10280,
+      "sha256": "0FC12A1F76AF24FE7716789C3727F7FAF2855955BBE19A9E371B30D4F8BF39FC"
+    },
+    {
+      "path": "standards/shot_scale_standard.json",
+      "bytes": 4999,
+      "sha256": "B75CA67F61DB1DF59F09F9B9D1DAD9E56280C4A36EC4A9CCC0F075C59EAF5705"
+    },
+    {
+      "path": "standards/single_frame_output_policy.json",
+      "bytes": 3848,
+      "sha256": "896EBF4F04FBE127AB7A388347E75321AB0618A20F3DEA1CC8B647E9AD22C655"
+    },
+    {
+      "path": "standards/storyboard_execution_framework.json",
+      "bytes": 6546,
+      "sha256": "AF328C2F78E9AEE11504B480676657A5EF57E089F9453773BE780B1525BD87E4"
+    },
+    {
+      "path": "standards/storyboard_reference_mandatory_policy.json",
+      "bytes": 3393,
+      "sha256": "9F4835817B199CEB6E158225DB9275BF70E854DAC4951B28B5C90688C8CEF987"
+    },
+    {
+      "path": "standards/storyboard_specification.json",
+      "bytes": 18271,
+      "sha256": "B434DDF3759F39404F264D9B93217C0B7117D8DE7956BFE5D17BC835FD3F6590"
+    },
+    {
+      "path": "standards/transition_shot_system.json",
+      "bytes": 6372,
+      "sha256": "F4136CAF7A483857C0F5D97C2220E6346F96DE833E01E53DF50C7C40DC24FFBB"
+    },
+    {
+      "path": "workflow.skeleton.json",
+      "bytes": 422766,
+      "sha256": "D88F6A890FC6EA1ABEEAADA6F467F9A79F12966BFAA4069D6E0DBE2607C6423B"
+    }
+  ]
+}

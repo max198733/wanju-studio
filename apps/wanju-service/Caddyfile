@@ -1,0 +1,14 @@
+{$WANJU_DOMAIN} {
+	handle_path /releases/* {
+		root * /srv/releases
+		header X-Content-Type-Options nosniff
+		header Cache-Control "public, max-age=3600"
+		file_server
+	}
+	handle {
+		reverse_proxy server:4890 {
+			header_up X-Wanju-Client-IP {remote_host}
+			header_up X-Wanju-Proxy-Token "{$WANJU_PROXY_TOKEN}"
+		}
+	}
+}

@@ -1,0 +1,139 @@
+{
+  "api_id": "api_integration.video_api",
+  "source_workflow_version": "v1.24.34",
+  "credential_policy": "本文件不含任何密钥；运行期从与组合包同级的 config/ 目录读取（见 credential_file）。",
+  "credential_file": "../config/minimax_h3_config.json",
+  "payload": {
+    "stage": 7,
+    "service": "AutoDL ComfyUI MiniMax-H3（两档接口：4分低价档 minimax_h3_image_audio_to_video_v2 / 8分高质量档 minimax_h3_z0903，按运行配置 h3_interface_tier 路由）",
+    "base_url": "https://autodl.art",
+    "model": "MiniMax-H3",
+    "endpoints": {
+      "create": "按 h3_interface_tier 二选一：standard_4 → POST https://autodl.art/api/v1/comfyui/comfyui_workflow/minimax_h3_image_audio_to_video_v2；high_8 → POST https://autodl.art/api/v1/comfyui/comfyui_workflow/minimax_h3_z0903（查询端点两者相同：GET /api/v1/comfyui/comfyui_workflow/result/{task_id}）",
+      "query_one": "GET https://autodl.art/api/v1/comfyui/comfyui_workflow/result/{task_id}",
+      "query_list": "不适用（该接口仅提供创建与结果查询两个端点）",
+      "query_balance": "不适用（计费以 AutoDL 平台为准）",
+      "cancel": "不适用（该接口无取消端点）"
+    },
+    "authentication": {
+      "headers": {
+        "Authorization": {
+          "configured": true,
+          "status": "present",
+          "value": "[REDACTED]"
+        },
+        "Content-Type": "application/json"
+      },
+      "credential_source": "项目配置文件或系统环境变量（本工作流目录config/minimax_h3_config.json或MINIMAX_H3_API_KEY）",
+      "key_format": "AutoDL ComfyUI 工作流 API Key（48位字符串，如AvJHh0...）"
+    },
+    "generation_mode": "多参生成",
+    "create_request": "ComfyUI 工作流提交（POST /api/v1/comfyui/comfyui_workflow/minimax_h3_image_audio_to_video_v2）：请求体为平台工作流输入参数，参考形态：prompt（分镜原文提示词）+ ref_image_0~n（参考图公网URL，来自stage6.5公网素材URL索引，该工作流单次最多8张）+ ref_audio_0~n（声线MP3公网URL，来自stage5声音圣经voice_returned_url，最多3个，按本镜说话人顺序写入；无说话人时 standard_4 可不传；**但 high_8 档 ref_audio_0 为硬必填**，无台词镜须传静音参考音占位，见 h3_interface_tiers.high_8.request_shape）+ seed（可选，该工作流支持seed，传固定值可复现/变异同一镜头画面，不传时随机）；分辨率枚举按 h3_interface_tier 分档（standard_4：768p竖/1080p竖/768p横/1080p横；high_8：768p竖(768*1376)/768p横(1376*768)/1088p竖(1088*1920)/1088p横(1920*1088)/1440p竖(1440*2560)/1440p横(2560*1440)，必须带 (宽*高) 后缀）（H3项目专属分辨率组：启动第一问选H3后按 h3_interface_tier 条件追问确定档位，再从该档位对应组锁定，读运行配置project_resolution，H3请求与视频提示词保持一致，视频提示词最上方[镜号] | 持续时长：X秒 | resolution\": XXX 行实际写入该值）；时长4-10秒（2026-08-29实测：未传时长时平台默认8秒；按该镜头分镜持续时长写入，低于4秒按4秒保底）；具体字段以AutoDL实际返回为准，本工作流素材侧仍遵循「分镜原文 + 多参素材 + 声音参考」规则",
+    "content_schema": "该接口不使用MiniMax原生content数组；参考图/分镜图等素材按平台工作流定义的ref_image_0~n输入字段传入，声线音频按ref_audio_0~n输入字段传入（本工作流支持音频输入，最多3个），URL必须为stage6.5验证通过的公网地址；人物数量无上限、道具≤2个、场景1个的工作流资产规则",
+    "content_rules": [
+      "stage7固定采用多参素材生成（H3多图多音频生视频工作流 minimax_h3_image_audio_to_video_v2），素材以平台工作流ref_image_0~n输入字段传入、声线以ref_audio_0~n输入字段传入，必须至少包含分镜原文提示词。",
+      "素材数量规则：人物数量无上限、道具≤2个、场景1个；ref_image参考图单次最多8张、ref_audio声线音频单次最多3个（该工作流上限）；多参素材URL必须为stage6.5验证通过的公网地址。",
+      "每个多参@引用必须在工作流输入中对应实际素材URL，不能只在提示词中写@文本；每个声音参考@[voice_id]_声线资产必须在工作流输入中对应实际ref_audio URL。",
+      "素材URL顺序、Image编号与视频提示词@引用顺序必须一一对应；ref_audio顺序与本镜说话人说话顺序一一对应。",
+      "禁止使用首尾帧模式；不适用字段以平台工作流文档为准，不得自行拼造。"
+    ],
+    "create_response": {
+      "task_id": "任务ID（2026-08-29实测：data.task_id为UUID格式，如a8121517-ffbd-4d79-8fe2-68ab1ebcdbad；另含data.workflow、data.status=QUEUED、data.client_id、data.message、data.created_at）"
+    },
+    "query_response": {
+      "structure": "统一响应结构 {code, msg, data, request_id}；code=Success 表示成功",
+      "status_values": "2026-08-29实测：data.status 取值为 QUEUED|RUNNING|SUCCESS（大写，与task_binding的succeeded小写枚举不同，轮询判定时以大写SUCCESS为准）",
+      "results_field": "data.results[] 数组；视频项结构 {type:video, url:下载地址, file_type:mp4, alias:final_video, description:最终生成的视频}，取片时读取 data.results[].url（type=video、alias=final_video 的项）",
+      "duration_field": "data.duration 为任务已运行秒数（2026-08-29实测：8秒片长约109秒完成）",
+      "result": "GET /api/v1/comfyui/comfyui_workflow/result/{task_id}（必须GET，POST会返回404/工作流不可用；无效task_id查询返回code=InternalError、msg=工作流不可用，属正常业务响应而非鉴权失败）轮询原task_id直到终态，成功后下载视频",
+      "retry_hint": "国内网络SSL抖动频繁，建议轮询内置重试（如5次、间隔10秒）"
+    },
+    "video_return_policy": {
+      "purpose": "固化H3视频结果到本地成片的返图闭环：H3生成成功后的视频下载地址必须被完整回写、下载并登记，禁止只记录task_id而丢失视频URL；与image_return_policy的收图回验共同构成xem8k5→H3→成片的完整返图链路。",
+      "return_object": {
+        "source": "data.results[].url（type=video、alias=final_video 的项，2026-08-29实测）",
+        "alias": "h3_returned_video_url",
+        "nature": "H3出片的一手公网下载地址，下载后登记并保留本地副本",
+        "companion_fields": [
+          "task_id",
+          "shot_id",
+          "prompt_version",
+          "ref_image_0~n字段名与URL清单（回验image_return_policy）",
+          "ref_audio_0~n字段名与voice_id/声线URL清单（回验voice_bible_audio_policy）"
+        ]
+      },
+      "chain": [
+        "受理：create返回task_id后立即写入13-工作流文档/API任务索引.json，按shot_id绑定，并同时回写本镜头请求体中实际使用的ref_image字段名与对应公网URL清单、ref_audio字段名与voice_id/声线URL清单。",
+        "轮询：GET result/{task_id}轮询原task_id直到终态，内置重试（如5次、间隔10秒），不重复创建同一任务。",
+        "取片：code=Success时从data.results[].url（type=video、alias=final_video的项）读取视频下载地址，作为本镜头的h3_returned_video_url。",
+        "下载：同一动作内下载视频到10-成片对应目录，并记录本地路径与h3_returned_video_url的双向映射。",
+        "登记：把h3_returned_video_url连同task_id、shot_id、下载时间、本地路径写入13-工作流文档/API任务索引.json。",
+        "校验：检查视频文件可播放且内容与分镜一致，通过后才允许标记该镜头succeeded并写入正式目录。"
+      ],
+      "mandatory_rules": [
+        "code=Success后必须同时完成下载与登记两件事，只做其中一件视为返图失败。",
+        "轮询期间不得重复创建同一shot_id的H3任务；task_id已存在时只查询结果。",
+        "code非Success或HTTP错误时读取msg并记录失败原因；失败任务确认终止后才允许重试并记录retry_of。"
+      ],
+      "return_url_expiry": "⚠️ 实测（2026-09-24）：H3 返回的视频下载地址是火山引擎 TOS 的**带签名临时地址**（含 `X-Tos-Expires=86400`，即 24 小时后失效）。因此『同一动作内下载本地副本』是硬要求 —— 禁止只登记 URL 而不下载，也禁止把该 URL 当作长期存储引用（与图片侧走腾讯云COS永久直链的做法不同）。"
+    },
+    "task_rules": [
+      "create返回task_id后立即写入13-工作流文档/API任务索引.json，并按shot_id绑定。",
+      "进行中的任务只查询原task_id，禁止重复创建。",
+      "成功状态后读取result接口返回的视频下载地址并下载；下载字段以AutoDL平台文档为准。",
+      "H3任务创建成功后，把本镜头请求体中实际使用的ref_image字段名与对应公网URL清单、ref_audio字段名与voice_id/声线URL清单回写13-工作流文档/API任务索引.json，闭合image_return_policy与voice_bible_audio_policy的返图链路（回验环节）。",
+      "失败任务确认终止后才允许重试，并记录retry_of。",
+      "该接口无取消端点；无需执行取消操作。"
+    ],
+    "callback_rules": "该接口不依赖回调机制，使用result接口轮询；如平台支持回调，以AutoDL平台文档为准。",
+    "billing_and_limits": {
+      "note": "计费规则以AutoDL平台为准；原CompShare积分单价（768P=10/s、1080P=15/s、2K=20/s）不再适用",
+      "duration": "4-10秒（该工作流最长10秒，以AutoDL实际返回为准）"
+    },
+    "status_flow": [
+      "QUEUED",
+      "RUNNING",
+      "SUCCESS",
+      "FAILED",
+      "CANCELLED"
+    ],
+    "status_flow_note": "2026-08-29实测：result接口data.status返回大写枚举 QUEUED|RUNNING|SUCCESS；终态判定以大写SUCCESS为准，与task_binding自检中的小写succeeded写法对齐使用",
+    "h3_interface_tiers": {
+      "rule": "启动时由 h3_interface_tier 二选一，全项目锁定；stage7 按该值选择 create 端点，查询端点两者相同。",
+      "standard_4": {
+        "tier_name": "4分低价低质量接口",
+        "create": "POST https://autodl.art/api/v1/comfyui/comfyui_workflow/minimax_h3_image_audio_to_video_v2",
+        "query_one": "GET https://autodl.art/api/v1/comfyui/comfyui_workflow/result/{task_id}",
+        "resolution_options": [
+          "768p竖",
+          "1080p竖",
+          "768p横",
+          "1080p横"
+        ],
+        "resolution_note": "直接用档位名，无后缀；实测 768p横 输出 1344x768。",
+        "duration": "4-10 秒（低于4秒按4秒保底）",
+        "request_shape": "prompt + resolution + duration + seed + ref_image_0~n（+ 可选 ref_audio_0~n）。**ref_image_0 必填；ref_audio_0 不强制** —— 2026-09-24 实测：仅传 prompt + resolution + duration + ref_image_0 即被正常受理并跑通（QUEUED→RUNNING→SUCCESS，4 秒 768p 约 134 秒），故无台词镜可不传参考音频。",
+        "ref_audio_required": false
+      },
+      "high_8": {
+        "tier_name": "8分高质量接口",
+        "create": "POST https://autodl.art/api/v1/comfyui/comfyui_workflow/minimax_h3_z0903",
+        "query_one": "GET https://autodl.art/api/v1/comfyui/comfyui_workflow/result/{task_id}",
+        "resolution_options": [
+          "768p竖(768*1376)",
+          "768p横(1376*768)",
+          "1088p竖(1088*1920)",
+          "1088p横(1920*1088)",
+          "1440p竖(1440*2560)",
+          "1440p横(2560*1440)"
+        ],
+        "resolution_note": "取值必须带 (宽*高) 后缀，如 768p横(1376*768)；实测输出与请求一致（1376x768）。不带后缀或全角括号会被以『不在 options 列表中』拒收。",
+        "duration": "4-10 秒（低于4秒按4秒保底）",
+        "stability": "实测不稳定：状态在 QUEUED/RUNNING 间反复回跳、偶发直接 FAILED；提交与轮询必须内置重试。",
+        "request_shape": "prompt + resolution + duration + seed + ref_image_0~n + ref_audio_0~n。**ref_image_0 与 ref_audio_0 均为硬必填**：无台词镜也必须传一条静音参考音占位（ffmpeg `-f lavfi -i anullsrc -t 3` 生成 MP3 后上传腾讯云COS 取永久直链），提示词内仍严格写全员闭口；缺 ref_audio_0 会被直接拒收 `缺少必填参数：ref_audio_0`。",
+        "ref_audio_required": true,
+        "silent_audio_rule": "无台词镜的占位做法：生成 3 秒静音 MP3（ffmpeg -f lavfi -i anullsrc -t 3）→ 上传腾讯云COS → 作为 ref_audio_0 传入；语义不破（依旧无人声），只满足接口必填项。禁止用有声素材占位。"
+      }
+    }
+  }
+}

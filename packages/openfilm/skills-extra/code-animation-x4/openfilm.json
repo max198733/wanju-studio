@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 219,
+  "icon": "film",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "X4 歌词 MV",
+    "en": "X4 歌词 MV"
+  },
+  "summary": {
+    "zh-CN": "- 分类：X code-video · code-video",
+    "en": "- 分类：X code-video · code-video"
+  },
+  "details": {
+    "zh-CN": "适合：金句、配乐段\n分类：code-video\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "适合：金句、配乐段\n分类：code-video\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}

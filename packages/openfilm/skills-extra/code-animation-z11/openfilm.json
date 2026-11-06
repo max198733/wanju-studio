@@ -1,0 +1,20 @@
+{
+  "version": "0.1.0",
+  "repository": "https://github.com/XiaoyeCodes/code-animation-prompts",
+  "kind": "style",
+  "order": 125,
+  "icon": "pen",
+  "cover": "cover.svg",
+  "title": {
+    "zh-CN": "Z11 京剧脸谱",
+    "en": "Z11 京剧脸谱"
+  },
+  "summary": {
+    "zh-CN": "脸谱纹样，浓烈色块 / Peking opera mask",
+    "en": "脸谱纹样，浓烈色块 / Peking opera mask"
+  },
+  "details": {
+    "zh-CN": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。",
+    "en": "分类：中国风\n此封面为目录示意图，不是来源样片或最终生成效果。"
+  }
+}
