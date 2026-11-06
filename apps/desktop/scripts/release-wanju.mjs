@@ -108,15 +108,18 @@ if (bundleBrowser && !browserReady()) {
 }
 mkdirSync(output, { recursive: true });
 process.env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
-process.env.ELECTRON_MIRROR ||= 'https://npmmirror.com/mirrors/electron/';
-process.env.ELECTRON_BUILDER_BINARIES_MIRROR ||= 'https://npmmirror.com/mirrors/electron-builder-binaries/';
+if (process.env.GITHUB_ACTIONS !== 'true') {
+  process.env.ELECTRON_MIRROR ||= 'https://npmmirror.com/mirrors/electron/';
+  process.env.ELECTRON_BUILDER_BINARIES_MIRROR ||= 'https://npmmirror.com/mirrors/electron-builder-binaries/';
+}
 const { build } = require('electron-builder');
 const electronVersion = require('electron/package.json').version;
+const electronDist = dirname(require('electron'));
 const result = await build({
   projectDir: stage, publish: 'never', win: ['nsis'], x64: true,
   config: {
     appId, productName, executableName: 'Wanju', npmRebuild: false,
-    electronVersion, electronDist: join(dirname(require.resolve('electron/package.json')), 'dist'),
+    electronVersion, electronDist,
     asar: true, asarUnpack: ['node_modules/**', 'src/as-node.mjs'],
     files: ['src/**/*', 'shell/dist/**/*', 'LICENSE', 'OPENFILM-TRADEMARK.md', 'package.json', 'node_modules/**/*',
       '!**/*.test.mjs', '!**/.local/**', '!**/test/**', '!**/tests/**'],

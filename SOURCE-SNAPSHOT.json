@@ -828,8 +828,8 @@
     },
     {
       "path": "apps/desktop/scripts/release-wanju.mjs",
-      "sha256": "14b5b45550aa6267ea1ea4136541182fd6c56865b258fc37dff6d6a7a6a35ff1",
-      "bytes": 12624
+      "sha256": "d952e882ea2edc7f9980686d5ca7cf9c20e4706473defb026dc7bc548d0b4574",
+      "bytes": 12661
     },
     {
       "path": "apps/desktop/scripts/release.mjs",
