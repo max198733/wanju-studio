@@ -38,8 +38,8 @@
     },
     {
       "path": ".gitleaks.toml",
-      "sha256": "c10aaf26bf52cd49688af0187988222a748e7d05ed6837e550a0b63fecc47fb2",
-      "bytes": 621
+      "sha256": "3080b50ac904442b59282bcc6033ea266b5163a8bdc7c462d1cd171e2a48b939",
+      "bytes": 1124
     },
     {
       "path": ".npmrc",
@@ -828,8 +828,8 @@
     },
     {
       "path": "apps/desktop/scripts/release-wanju.mjs",
-      "sha256": "0367fbd2686d83a678929c4391b066862cdca0ff64ab67f4c08ec5d2a26ca76d",
-      "bytes": 12606
+      "sha256": "14b5b45550aa6267ea1ea4136541182fd6c56865b258fc37dff6d6a7a6a35ff1",
+      "bytes": 12624
     },
     {
       "path": "apps/desktop/scripts/release.mjs",
@@ -1843,8 +1843,8 @@
     },
     {
       "path": "docs/opensource/SIGNPATH_APPLICATION.md",
-      "sha256": "165d2bef389a93a3ad1091fb70210d6d5b5a15841eded260c1f3d8ae9e22904c",
-      "bytes": 3564
+      "sha256": "bf830aedcc32a6a2a8c48f2adc3fbb7bafdf1edfbb1f5ace0db77545dafa45f5",
+      "bytes": 3561
     },
     {
       "path": "docs/wanju-product-review-2026-10-29.md",

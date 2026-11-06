@@ -27,7 +27,7 @@ if (existsSync(join(output, 'win-unpacked')) || existsSync(join(output, `Wanju-S
   throw new Error('Build output already contains a release; choose a new output directory.');
 }
 const localPnpm = join(repository, '.local/tools/pnpm9/package/bin/pnpm.cjs');
-const pnpm = process.env.WANJU_PNPM_CLI || (existsSync(localPnpm) ? localPnpm : require.resolve('pnpm/bin/pnpm.cjs'));
+const pnpm = process.env.WANJU_PNPM_CLI || (existsSync(localPnpm) ? localPnpm : join(dirname(require.resolve('pnpm')), 'bin/pnpm.cjs'));
 if (!existsSync(pnpm)) throw new Error('Set WANJU_PNPM_CLI to the installed pnpm 9 bin/pnpm.cjs file.');
 const run = (file, args, cwd = repository, extra = {}) => execFileSync(file, args, { cwd, stdio: 'inherit', ...extra });
 if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('This build is for Windows x64.');

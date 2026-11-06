@@ -9,7 +9,7 @@
 | --- | --- |
 | Project name | Wanju Studio / 玩剧 |
 | Project website | 由维护者确认官网和公开仓库地址 |
-| Source repository | 等待 GitHub 登录后创建的公开仓库 |
+| Source repository | https://github.com/max198733/wanju-studio |
 | Maintainer / contact | 由维护者本人填写真实姓名、GitHub 账号及可联系邮箱 |
 | Platform | Windows x64 |
 | Version | 2.1.0 |

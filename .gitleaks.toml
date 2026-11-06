@@ -11,3 +11,17 @@ condition = "AND"
 paths = ['''(^|/)packages/openfilm/studio/server/(providers/)?[\w-]+\.test\.mjs$''']
 regexTarget = "secret"
 regexes = ['''0123456789|12345678|123456|abcdef1234|ABCDEFGH9876''', '''^dGhlIHNhbXBsZSBub25jZQ==$''']
+
+[[allowlists]]
+description = "literal fake supplier key used only by media profile validation fixtures"
+condition = "AND"
+paths = ['''(^|/)apps/wanju-service/media-profiles\.test\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^supplier-key-123$''']
+
+[[allowlists]]
+description = "literal fake keys used only by mocked media compatibility relay tests"
+condition = "AND"
+paths = ['''(^|/)apps/wanju-service/media-relay\.test\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^compat-secret-key-000[12]$''']
