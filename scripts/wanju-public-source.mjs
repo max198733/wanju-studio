@@ -7,7 +7,7 @@ import { parseArgs } from 'node:util';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const rootFiles = new Set(['.gitattributes', '.gitignore', '.gitleaks.toml', '.npmrc', '.secretlintrc.json',
-  'AGENTS.md', 'LICENSE', 'TRADEMARK.md', 'THIRD_PARTY_NOTICES.md', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']);
+  'AGENTS.md', 'LICENSE', 'PRIVACY.md', 'TRADEMARK.md', 'THIRD_PARTY_NOTICES.md', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']);
 const roots = new Set(['apps', 'packages', 'integrations', 'resources', 'skills', 'scripts', 'tools', '.agents', 'docs']);
 const excluded = ['docs/wanju/', 'apps/wanju-service/ops/'];
 

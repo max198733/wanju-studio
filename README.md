@@ -36,7 +36,7 @@ node apps/desktop/scripts/release-wanju.mjs --version=2.1.0 --signing=none --out
 
 ## 测试与贡献
 
-参见 [贡献指南](CONTRIBUTING.md)、[安全政策](SECURITY.md) 和 [构建与签名说明](docs/opensource/BUILDING.md)。
+参见 [贡献指南](CONTRIBUTING.md)、[安全政策](SECURITY.md)、[隐私政策 / Privacy Policy](PRIVACY.md) 和 [构建与签名说明](docs/opensource/BUILDING.md)。
 本仓库是筛选后的源码快照，不包含部署者的本地运维提交记录；来源与文件摘要见 `SOURCE-SNAPSHOT.json`。
 
 ## Code signing policy

@@ -57,6 +57,11 @@
       "bytes": 1078
     },
     {
+      "path": "PRIVACY.md",
+      "sha256": "e4e5d34c5b8e2660f507094bbef6a602f89fe33ff3750d2184e035f160fc9496",
+      "bytes": 14079
+    },
+    {
       "path": "THIRD_PARTY_NOTICES.md",
       "sha256": "bc548c7f663fe7ca3b407be60f65c95fa2b05adbc5a8c04f8de141555a0138e4",
       "bytes": 464
@@ -1833,8 +1838,8 @@
     },
     {
       "path": "docs/opensource/README.public.md",
-      "sha256": "bebb7f222e8b5066463ecbc2d7e7506836471dcaa708cb79e8c307636f51bba9",
-      "bytes": 2864
+      "sha256": "ee95da84983acb68cd16b57ff7d4f14ead2668d3c9ebc31b9ca77fa0159d6fcc",
+      "bytes": 2910
     },
     {
       "path": "docs/opensource/SECURITY.public.md",
@@ -10935,8 +10940,8 @@
     },
     {
       "path": "scripts/wanju-public-source.mjs",
-      "sha256": "c5ed4e1d87c6dbc2901b46acf9348c6f9d7c879d4baff61eb59a43b5966d4025",
-      "bytes": 9836
+      "sha256": "239901e081454c22e226c3981df9cd891f7665656cc0c755c2739b6fbd7e8b42",
+      "bytes": 9850
     },
     {
       "path": "scripts/wanju-public-source.test.mjs",
