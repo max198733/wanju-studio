@@ -10920,8 +10920,8 @@
     },
     {
       "path": "scripts/wanju-ci-tools.ps1",
-      "sha256": "766c00db60a1d57086ef9f417f6f8bdcbcf07f2cd025d2d3bd6c160625912bda",
-      "bytes": 1331
+      "sha256": "b5cb01bc295a39525b8b066e2c115f750013645f4a10b492249c3f94e0ff3d36",
+      "bytes": 1372
     },
     {
       "path": "scripts/wanju-demo.mjs",

@@ -8,7 +8,7 @@ $directory = Join-Path $tools $name
 if (-not (Test-Path -LiteralPath (Join-Path $directory 'bin/ffmpeg.exe'))) {
     New-Item -ItemType Directory -Force -Path $tools | Out-Null
     $archive = Join-Path $tools "$name.zip"
-    Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/packages/$name.zip" -OutFile $archive -TimeoutSec 180
+    Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/packages/$name.zip" -OutFile $archive -TimeoutSec 180 -MaximumRetryCount 3 -RetryIntervalSec 5
     if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $sha256) {
         throw 'FFmpeg archive checksum does not match the reviewed build input.'
     }
