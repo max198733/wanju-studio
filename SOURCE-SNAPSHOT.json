@@ -23,8 +23,8 @@
     },
     {
       "path": ".github/workflows/wanju-ci.yml",
-      "sha256": "953c7183245f0ded15d8ac5d06cf6969e43d0d9e1b23343ab320f275ec2a27ba",
-      "bytes": 2065
+      "sha256": "52651ccb8ab1c99c120636c67e730b5bacc6b574ec1ee6620c463fb86beb293d",
+      "bytes": 2617
     },
     {
       "path": ".github/workflows/wanju-windows.yml",

@@ -47,4 +47,13 @@ jobs:
           echo "$expected  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
       - name: Scan the public Git history without exposing matched values
-        run: '"$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner --log-level warn .'
+        shell: bash
+        run: |
+          set +e
+          "$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner --log-level warn --report-format json --report-path "$RUNNER_TEMP/gitleaks.json" .
+          scan_status=$?
+          set -e
+          if test "$scan_status" -ne 0 && test -f "$RUNNER_TEMP/gitleaks.json"; then
+            node -e 'const fs=require("node:fs");const p=require("node:path");const findings=JSON.parse(fs.readFileSync(p.join(process.env.RUNNER_TEMP,"gitleaks.json"),"utf8"));console.log(JSON.stringify(findings.map(f=>({rule:f.RuleID,file:f.File,line:f.StartLine}))))'
+          fi
+          exit "$scan_status"
